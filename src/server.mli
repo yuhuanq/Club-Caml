@@ -1,6 +1,6 @@
-(* open Lwt *)
-(* open Protocol *)
-(* open Room *)
+open Lwt_unix
+open Protocol
+open Room
 
 
 (* Address that server listens to *)
@@ -31,4 +31,4 @@ val main: unit -> unit
 
 
 (* [send_all] sends a message to everyone in given current rom. Uses lwt.io *)
-val send_all :  string -> room.t -> unit
+val send_all :  string -> Room.t -> unit
