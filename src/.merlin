@@ -1,5 +1,5 @@
-PKG LWT
+PKG lwt
 PKG ANSITerminal
-PKG PTIME
+PKG ptime
 B _build/
 S .
