@@ -1,2 +1,7 @@
-# Church-Caml
-Terminal based XMPP Client in OCaml
+# Club Caml
+
+Chat. Play. Socialize. This is Club Camel.
+
+
+
+
