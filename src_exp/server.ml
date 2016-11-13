@@ -17,10 +17,6 @@ let () = Lwt_log.add_rule "*" Lwt_log.Info
 
 let handle_message msg =
     msg
-    (* match msg with *)
-    (* | "read" -> string_of_int !counter *)
-    (* | "inc"  -> counter := !counter + 1; "Counter has been incremented" *)
-    (* | _      -> "Unknown command" *)
 
 let rec handle_connection ic oc () =
     Lwt_io.read_line_opt ic >>=

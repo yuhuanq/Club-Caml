@@ -8,6 +8,5 @@ all:
 	ocamlbuild -use-ocamlfind -pkgs lwt,lwt.unix server.byte client.byte
 
 
-
 # vim:ft=make
 #
