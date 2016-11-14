@@ -4,7 +4,7 @@
 val listen_address : Unix.inet_addr
 val port : int
 
-val handle_connection : Lwt_io.input_channel -> Lwt_io.output_channel ->  unit Lwt.t
+val handle_connection : Lwt_io.input_channel -> Lwt_io.output_channel -> unit -> unit Lwt.t
 
 (* [greeting oc] is a message/prompt the server sends to a new connection  *)
 val greeting : Lwt_io.output_channel -> unit

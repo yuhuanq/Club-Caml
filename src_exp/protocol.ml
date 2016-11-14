@@ -28,50 +28,84 @@ type frame = {
                body : string
              }
 
-(*
- * TODO: specs
- *)
-let parse_headers buf =
-  failwith "unimplemented"
+module ParseFrameStr = struct
+  (*
+   * TODO: specs
+   *)
+  let parse_headers buf =
+    failwith "unimplemented"
 
-(*
- * TODO: specs
- *)
-let parse_body buf =
-  failwith "unimplemented"
+  (*
+   * TODO: specs
+   *)
+  let parse_body buf =
+    failwith "unimplemented"
 
-(*
- * TODO: specs
- *)
-let parse_cmd buf =
-  failwith "unimplemented"
+  (*
+   * TODO: specs
+   *)
+  let parse_cmd buf =
+    failwith "unimplemented"
 
-(*
- * [frame_of_buf buf] is a frame record. Given a string [buf] in STOMP format
- * construct a frame
- *
- * i.e.
- * [ frame_of_string "
- * SEND
- * destination:/queue/a
- * hello queue a
- * ^@" ]
- * is { cmd = SEND; headers = ["destination","/queue/a"]; body = "hello queue a" }
- *)
-let frame_of_buf buf =
-  failwith "unimplemented"
+  (*
+   * [frame_of_buf buf] is a frame record. Given a string [buf] in STOMP format
+   * construct a frame
+   *
+   * i.e.
+   * [ frame_of_string "
+   * SEND
+   * destination:/queue/a
+   * hello queue a
+   * ^@" ]
+   * is { cmd = SEND; headers = ["destination","/queue/a"]; body = "hello queue a" }
+   *)
+  let frame_of_buf buf =
+    failwith "unimplemented"
+end
 
-(*
- * [format_raw_string str] is a formatted string in STOMP format.
- *)
-let format_raw_string =
-  failwith "unimplemented"
 
-(*
- * server method.
- * [string_of_frame] is a formatted string in STOMP format. Given a frame record,
- * disect it and construct a STOMP formatted string.
- *)
-let string_of_frame frame =
-  failwith "unimplemented"
+(*******************************************
+*  functions to make string STOMP frames  *
+*******************************************)
+module MakeFrameStr = struct
+  let mk_send dest msg =
+    failwith "unimplemented"
+
+  let mk_subscribe dest =
+    failwith "unimplemented"
+
+  let mk_unsubscribe dest =
+    failwith "unimplemented"
+
+  let mk_connect host =
+    failwith "unimplemented"
+
+  let mk_ack msgid subscription =
+    failwith "unimplemented"
+
+  let disconnect_frame = "DISCONNECT\n\n\x00\n"
+
+  (********************
+  *  might not impl  *
+  ********************)
+  let mk_begin = failwith "unimplemented"
+  let mk_commit = failwith "unimplemented"
+  let mk_abort = failwith "unimplemented"
+
+  (*********************
+  *  server commands  *
+  *********************)
+  let mk_connected = failwith "unimplemented"
+  let mk_message = failwith "unimplemented"
+  let mk_receipt = failwith "unimplemented"
+  let mk_error = failwith "unimplemented"
+
+  (*
+   * server method.
+   * [string_of_frame] is a formatted string in STOMP format. Given a frame record,
+   * disect it and construct a STOMP formatted string.
+   *)
+  let string_of_frame frame =
+    failwith "unimplemented"
+end
 

@@ -4,8 +4,10 @@
 #
 
 all:
-	# ocamlfind ocamlopt -package lwt,lwt.unix -linkpkg -o counter-server ./counter-server.ml
 	ocamlbuild -use-ocamlfind -pkgs lwt,lwt.unix server.byte client.byte
+
+test:
+	ocamlbuild -use-ocamlfind -pkgs oUnit test_protocol.byte && ./test_protocol.byte
 
 
 # vim:ft=make
