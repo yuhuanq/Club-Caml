@@ -1,4 +1,0 @@
-PKG lwt
-PKG oUnit
-S .
-B _build

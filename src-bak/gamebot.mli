@@ -12,11 +12,9 @@ type move_spec
  * game we’re playing*)
 val start_game: unit -> game_state
 
-
 (* Takes in the current game state and the move that is to be made,
  * and returns the new game state*)
 val make_move: (move_spec * game_state) -> game_state
-
 
 (* [return_status] takes in a [game_state] and returns a string
  * representation of the game_state *)

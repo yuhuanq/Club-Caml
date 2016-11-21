@@ -1,34 +1,30 @@
-open Lwt_unix
-open Protocol
-open Room
-
+(* TODO: data structures  *)
 
 (* Address that server listens to *)
-val address_listened : Unix.inet_addr
-
-
-(* Port that server listens in *)
+val listen_address : Unix.inet_addr
 val port : int
 
+val handle_connection : Lwt_io.input_channel -> Lwt_io.output_channel -> unit -> unit Lwt.t
 
-(* Returns a socket based on the address listened and port. *)
-val create_socket :  unit -> Lwt_unix.file_descr
+(* [greeting oc] is a message/prompt the server sends to a new connection  *)
+val greeting : Lwt_io.output_channel -> unit
 
+(*
+ * [accept_connection conn] 'accepts' a connection from
+ * [conn : descriptor * sockaddr] and creates a channel to the file descriptor,
+ * sends a greeting, and calls [handle_connection]
+ *)
+val accept_connection : Lwt_unix.file_descr * Lwt_unix.sockaddr -> unit Lwt.t
 
-(* [connect socket] accepts connections given socket and returns a working
-server. If connection is unsuccessful, prints error message in log. *)
-val make_server : Lwt_unix.file_descr -> 'a lwt.t
+(*
+ * [create_socket () ] creates a socket of type stream in the internet
+ * domain with the default protocol and returns it
+ *)
+val create_socket : unit -> Lwt_unix.file_descr
 
-(* [handle_message msg] returns a response based on the msg inputted.
-The way type response is defined takes care of invalid inputs.
-This function will use functions from Protocol to format the response correctly.
-*)
-val handle_message: request -> response
-
-
-(* [main] loops the server and keeps it running. *)
-val main: unit -> unit
-
-
-(* [send_all] sends a message to everyone in given current rom. Uses lwt.io *)
-val send_all :  string -> Room.t -> unit
+(*
+ * [create_server] creates a socket with [create_socket] and enters an infinite
+ * loop. At each iteration of the loop, it waits for a connection request with
+ * accept and treats it with [accept_connection].
+ *)
+val create_server : unit -> unit -> 'a Lwt.t

@@ -1,5 +1,4 @@
 PKG lwt
-PKG ANSITerminal
-PKG ptime
-B _build/
+PKG oUnit
 S .
+B _build

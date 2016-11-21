@@ -1,34 +1,64 @@
-(* open NetDate *)
-open Lwt
-open Ptime
+(*
+ * protocol.mli
+ * Copyright (C) 2016 yqiu <yqiu@f24-suntzu>
+ *
+ * Distributed under terms of the MIT license.
+ *)
 
-(* Types of communications
-Format commands (used to change colors)
-System commands (quit or change chatrooms)
-Game commands (moves in a game, start a game)
-Normal messages to the chatroom *)
-type comm_type = FormatCmd | SysCmd  | GameCmd |  Message
+type command = | SEND
+               | SUBSCRIBE
+               | UNSUBSCRIBE
+               | BEGIN
+               | COMMIT
+               | ABORT
+               | ACK
+               | DISCONNECT
+               | CONNECT
+               | CONNECTED
+               | MESSAGE
+               | RECEIPT
+               | ERROR
 
-(* [request] is a record with multiple fields: r_id stores the record ID, comm_type specifies whether it is a simple message or a type of command, r_body is the string that comprises the body and r_timestamp simply stores the timestamp of when the request was sent*)
-type request  = {
-  r_id: int;
-  r_type: comm_type;
-  r_body: string;
-  r_timestamp: time
+(* Stomp Frame representation type *)
+type frame = {
+  cmd     : command;
+  headers : (string * string) list;
+  body    : string
 }
 
-(* [create_socket unit] returns and binds a socket to a local address in the server’s or clients system base and port, depending on which one uses this function. *)
-val create_socket :  unit -> Lwt_unix.file_descr
+val str_of_cmd : command -> string
 
-(* [get_type_str] returns the corresponding command type of an inputted string. *)
-val get_type_str: string -> comm_type
+val cmd_of_str : string -> command
 
-(* [create_req] returns a request based on the inputted command. *)
-val create_req : string -> request
+(* [send_frame buf oc] writes the buffer to output channel [oc] *)
+val send_frame : frame -> Lwt_io.output_channel -> unit Lwt.t
 
-(* Response is the type of responses from the server to the client. [ resp_id ]  corresponds to the  id of the request, [succ] indicates whether the request was executed successfully. Nonzero ints indicate failure. *)
-type response = { resp_id : int ; succ : int }
+(* [read_frame ic] is the resulting STOMP frame RECORD from reading from [ic]. *)
+val read_frame : Lwt_io.input_channel -> frame Lwt.t
 
-(* [create_response] is used to format a string as a response *)
-val create_response: string-> response
+(* [make_disconnect] is a STOMP DISCONNECT frame *)
+val make_disconnect  : frame
 
+(* [make_send] is a STOMP SEND frame *)
+val make_send        : string -> string -> frame
+
+(* [make_subscribe] is a STOMP SUBSCRIBE frame *)
+val make_subscribe   : string -> frame
+
+(* [make_unsubscribe] is a STOMP UNSUBSCRIBE frame *)
+val make_unsubscribe : string -> frame
+
+(* [make_connect] is a STOMP CONNECT frame *)
+val make_connect     : string -> string -> frame
+
+(* [make_ack] is a STOMP ACK frame *)
+val make_ack         : string -> frame
+
+(* [make_connected] is a STOMP CONNECTED frame *)
+val make_connected   : string -> frame
+
+(* [make_message] is a STOMP MESSAGE frame *)
+val make_message     : string -> string -> string -> frame
+
+(* [make_error] is a STOMP ERROR frame *)
+val make_error       : string -> string -> frame

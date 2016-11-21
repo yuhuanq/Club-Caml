@@ -6,6 +6,7 @@
  *)
 
 open Lwt
+open Protocol
 
 (* make server listen on 127.0.0.1:9000 *)
 let listen_address = Unix.inet_addr_loopback (* or Sys.argv.(1) *)

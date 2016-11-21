@@ -1,0 +1,7 @@
+#directory "_build";;
+#load "str.cma";;
+#load "protocol.cmo";;
+#require "lwt";;
+open Lwt;;
+
+
