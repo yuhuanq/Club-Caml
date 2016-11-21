@@ -8,20 +8,13 @@
 open OUnit2
 open Protocol
 
-let fr1 = { cmd = SEND; headers = ["destination","/queue/a"]; body="hello queue a"}
-let fr1_str =
-"SEND
-destination:/queue/a
-
-hello queue a
-^@"
+let fr1 = { cmd = SEND; headers = ["destination","/queue/a";"content-length","14"]; body="hello queue a"}
+let fr1_str = "SEND\ndestination:/queue/a\ncontent-length:14\n\nhello queue a\x00"
+let contents = Buffer.contents
 
 let tests = "test suite" >::: [
   "dummy" >:: (fun _ -> assert_equal 1 ( 1 ));
-  "pack1" >:: (fun _ -> assert_equal fr1_str ~printer:(fun x->x) (pack fr1));
-  "unpack1" >:: (fun _ -> assert_equal fr1  (unpack fr1_str));
-  "pack then unpack" >:: (fun _ -> assert_equal fr1 (unpack (pack fr1)));
+  "pack1" >:: (fun _ -> assert_equal ~printer:(fun x -> x) fr1_str (contents (pack fr1)));
 ]
 
 let _ = run_test_tt_main tests
-

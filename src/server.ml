@@ -79,3 +79,6 @@ let create_server () =
 let () =
     let serve = create_server () in
     Lwt_main.run @@ serve ()
+
+let _ = {cmd = SEND ; headers = [] ; body = ""}
+

@@ -1,4 +1,5 @@
 PKG lwt
 PKG oUnit
+PKG lwt.unix
 S .
 B _build

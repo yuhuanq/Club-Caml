@@ -131,8 +131,8 @@ let pack frame =
     begin
     Buffer.add_string buf "content-length";
     Buffer.add_char buf ':';
-    let len = String.length (List.assoc "content-length" frame.headers) in
-    Buffer.add_string buf (string_of_int len);
+    let len = (List.assoc "content-length" frame.headers) in
+    Buffer.add_string buf (len);
     Buffer.add_char buf '\n';
     end
   else ();
