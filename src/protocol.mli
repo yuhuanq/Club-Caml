@@ -4,7 +4,6 @@
  *
  * Distributed under terms of the MIT license.
  *)
-
 open Lwt
 
 type command = | SEND
@@ -31,6 +30,26 @@ type frame = {
 val str_of_cmd : command -> string
 
 val cmd_of_str : string -> command
+
+(*
+ * [frame_of_buf buf] is a frame record. Given a string [buf] in STOMP format
+ * construct a frame
+ *
+ * i.e.
+ * [ frame_of_string "
+ * SEND
+ * destination:/queue/a
+ * hello queue a
+ * ^@" ]
+ * is { cmd = SEND; headers = ["destination","/queue/a"]; body = "hello queue a" }
+ *)
+val unpack : string -> frame
+
+(*
+ * [pack frame] is a buffer representation of the STOMP frame.
+ * [frame] is a frame record
+ *)
+val pack : frame -> Buffer.t
 
 (* [send_frame buf oc] writes the buffer to output channel [oc] *)
 val send_frame : frame -> Lwt_io.output_channel -> unit Lwt.t
