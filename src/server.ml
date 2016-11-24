@@ -14,9 +14,19 @@ type connection = {
   username   : string
 }
 
+type message = {
+  id : float; (* The timestamp of the message. Unique identifier for messages with the same destination. *)
+  conn : connection;
+  content : string
+}
+
 module CSET = Set.Make(struct
     type t = connection
     let compare v1 v2 = Pervasives.compare v1.username v2.username
+  end)
+module MSET = Set.Make(struct
+    type t = message
+    let compare v1 v2 = Pervasives.compare v1.id v2.id
   end)
 module USERSET = Set.Make(struct type t = string let compare =
                                                    Pervasives.compare end)
@@ -30,13 +40,14 @@ type state = {
   mutable connections : CSET.t;
   mutable topics : TOPICSET.t;
   mutable map : (string,CSET.t) H.t;
-  (* mutable map_msg : (string,string list) *)
+  mutable map_msg : (string, MSET.t) H.t
 }
 
 let state = {
   connections = CSET.empty;
   topics = TOPICSET.empty;
   map = H.create 10;
+  map_msg = H.create 10;
 }
 
 (* [clean_state] resets the state to default values *)
@@ -44,6 +55,7 @@ let clean_state () =
   state.connections <- CSET.empty;
   state.topics <- TOPICSET.empty;
   state.map <- H.create 10;
+  state.map_msg <- H.create 10;
   ()
 
 (* make server listen on 127.0.0.1:9000 *)
@@ -65,6 +77,10 @@ let handle_send frame conn =
   let mid = string_of_float (Unix.gettimeofday ()) in
   let conns = H.find state.map topic in
   let message_frame = Protocol.make_message topic mid msg in
+  let msg_obj = {id = float_of_string mid; conn = conn; content = msg} in
+  let msg_objs = H.find state.map_msg topic in
+  let msg_objs' = MSET.add msg_obj msg_objs in
+  H.replace state.map_msg topic msg_objs';
   let send_fun conn =
     ignore_result (Protocol.send_frame message_frame conn.output) in
   CSET.iter send_fun conns;
@@ -91,7 +107,9 @@ let handle_subscribe frame conn =
     (* if nonexisting topic, create  it and sub conn to it  *)
     state.topics <- TOPICSET.add topic state.topics;
     let conns = CSET.add conn CSET.empty in
+    let msgs = MSET.empty in
     H.add state.map topic conns;
+    H.add state.map_msg topic msgs;
     ignore_result (Lwt_log.info ("created new topic: " ^ topic ^ "and " ^
                                  conn.username ^ " subscribed to " ^ topic));
     return ()
@@ -110,7 +128,9 @@ let handle_unsubscribe frame conn =
     H.replace state.map topic conns';
     ignore_result (Lwt_log.info ("unsubscribed " ^ conn.username ^ " from " ^
     topic));
-    return ()
+    if conns' = CSET.empty
+      then (H.replace state.map_msg topic MSET.empty; return ())
+    else return ()
   with Not_found ->
     let error = make_error "" "cannot unsubscribe from a nonexsting topic" in
     Protocol.send_frame error conn.output
@@ -128,6 +148,17 @@ let handle_disconnect frame conn =
   H.iter f state.map;
   ignore_result (Lwt_log.info ("disconnected " ^ conn.username));
   return ()
+
+(* [flush_map_message map_message] flushes chat history stored in map_message to
+ * the database if the size of the chat history exceeds the limit. It's incomplete
+ *)
+(* let flush_map_message map_message limit =
+  let helper topic msgset =
+    if List.length (MSET.elements msgset) >= limit
+      then (* flush; *) ignore_result (Lwt_log.info ("flushing to disk: " ^ topic))
+    else () in
+  H.iter helper map_message;
+  return () *)
 
 let handle_frame frame conn =
   match frame.cmd with
@@ -226,4 +257,3 @@ let () =
   clean_state ();
   let serve = create_server () in
   Lwt_main.run @@ serve ()
-
