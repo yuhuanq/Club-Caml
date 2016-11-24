@@ -1,6 +1,6 @@
 (*
  * client.ml
- * Copyright (C) 2016 yqiu <yqiu@f24-suntzu>
+ * Copyright (C) 2016 yqiu <yqiu@f24-suntzu>, Eric Wang
  *
  * Distributed under terms of the MIT license.
  *)
@@ -14,7 +14,7 @@
 open Sys
 open Unix
 
-
+(*
 (* lib function Misc.retransmit fdin fdout reads data on the descriptor fdin *)
 (* and writes it on fdout *)
 let retransmit fdin fdout =
@@ -77,7 +77,9 @@ let client () =
       (* socket *)
       close stdout;
       wait ()
+*)
 
-let main ipstring = failwith "unimplemented"
-
+let main ipstring = print_endline ("\nConnected to "^ipstring^"!\n")
+(*
 let _ = handle_unix_error client ()
+*)
