@@ -30,6 +30,7 @@ type state = {
   mutable connections : CSET.t;
   mutable topics : TOPICSET.t;
   mutable map : (string,CSET.t) H.t;
+  (* mutable map_msg : (string,string list) *)
 }
 
 let state = {
@@ -58,7 +59,17 @@ let () = Lwt_log.add_rule "*" Lwt_log.Info
  * destination in the system.
 *)
 (* val handle_subscribe : frame -> connection -> unit Lwt.t  *)
-let handle_send frame conn = failwith "unimplemented"
+let handle_send frame conn =
+  let topic = Protocol.get_header frame "destination" in
+  let msg = frame.body in
+  let mid = string_of_float (Unix.gettimeofday ()) in
+  let conns = H.find state.map topic in
+  let message_frame = Protocol.make_message topic mid msg in
+  let send_fun conn =
+    ignore_result (Protocol.send_frame message_frame conn.output) in
+  CSET.iter send_fun conns;
+  ignore_result (Lwt_log.info ("sent a MESSAGE frame to destination: " ^ topic));
+  return ()
 
 (*
  * [handle_subscribe] handles a SUBSCRIBE frame. a SUBSCRIBE command is used to
@@ -73,12 +84,17 @@ let handle_subscribe frame conn =
   try
     let conns = H.find state.map topic in
     let conns' = CSET.add conn conns in
-    H.replace state.map topic conns'; return ()
+    H.replace state.map topic conns';
+    ignore_result (Lwt_log.info (conn.username ^ " subscribed to " ^ topic));
+    return ()
   with Not_found ->
     (* if nonexisting topic, create  it and sub conn to it  *)
     state.topics <- TOPICSET.add topic state.topics;
     let conns = CSET.add conn CSET.empty in
-    H.add state.map topic conns; return ()
+    H.add state.map topic conns;
+    ignore_result (Lwt_log.info ("created new topic: " ^ topic ^ "and " ^
+                                 conn.username ^ " subscribed to " ^ topic));
+    return ()
 
 (*
  * [handle_unsubscribe] handles a UNSUBSCRIBE frame. a UNSUBSCRIBE command is
@@ -91,35 +107,51 @@ let handle_unsubscribe frame conn =
   try
     let conns = H.find state.map topic in
     let conns' = CSET.remove conn conns in
-    H.replace state.map topic conns'; return ()
+    H.replace state.map topic conns';
+    ignore_result (Lwt_log.info ("unsubscribed " ^ conn.username ^ " from " ^
+    topic));
+    return ()
   with Not_found ->
     let error = make_error "" "cannot unsubscribe from a nonexsting topic" in
     Protocol.send_frame error conn.output
 
 (* [handle_disconnect] does a graceful disconnect for a client from the server *)
 (* val handle_subscribe : frame -> connection -> unit  *)
-let handle_disconnect frame conn = failwith "unimplemented"
+let handle_disconnect frame conn =
+  let _ = Lwt_io.abort conn.output in
+  (* remove from  connections *)
+  state.connections <- CSET.remove conn state.connections;
+  (* remove from subscriptions *)
+  let f k v =
+    let conns' = CSET.remove conn v in
+    H.replace state.map k conns' in
+  H.iter f state.map;
+  ignore_result (Lwt_log.info ("disconnected " ^ conn.username));
+  return ()
 
-let handle_frame frame =
+let handle_frame frame conn =
   match frame.cmd with
-  | SEND -> handle_send
-  | SUBSCRIBE -> handle_subscribe
-  | UNSUBSCRIBE -> handle_unsubscribe
-  | DISCONNECT -> handle_disconnect
+  | SEND -> handle_send frame conn
+  | SUBSCRIBE -> handle_subscribe frame conn
+  | UNSUBSCRIBE -> handle_unsubscribe frame conn
+  | DISCONNECT -> handle_disconnect frame conn
   | _ -> failwith "invalid client frame"
 
-let handle_message msg =
-  msg
+let handle_message msg = msg
 
 let rec handle_connection conn () =
-  (* Lwt_io.read_frame conn.input >>= *)
-  Lwt_io.read_line_opt conn.input >>=
-  (fun msg ->
-     match msg with
-     | Some msg ->
-       let reply = handle_message msg in
-       Lwt_io.write_line conn.output reply >>= handle_connection conn
-     | None -> Lwt_log.info "Connection closed" >>= return)
+  Protocol.read_frame conn.input >>=
+  (fun frame ->
+    handle_frame frame conn >>= (fun () -> handle_connection conn ()))
+  (*
+   * Lwt_io.read_line_opt conn.input >>=
+   * (fun msg ->
+   *    match msg with
+   *    | Some msg ->
+   *      let reply = handle_message msg in
+   *      Lwt_io.write_line conn.output reply >>= handle_connection conn
+   *    | None -> Lwt_log.info "Connection closed" >>= return)
+   *)
 
 (* [newi] is a unique int *)
 let newi =
@@ -145,7 +177,6 @@ let establish_connection ic oc client_id=
       let reply = make_error "" "Expected a CONNECT frame" in
       Protocol.send_frame reply oc >>= (fun _ -> Lwt_io.abort ic) in
   Protocol.read_frame ic >>= f
-
 
 (*
  * [accept_connection conn] 'accepts' a connection from
