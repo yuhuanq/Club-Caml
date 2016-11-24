@@ -78,4 +78,6 @@ let client () =
       close stdout;
       wait ()
 
+let main ipstring = failwith "unimplemented"
+
 let _ = handle_unix_error client ()
