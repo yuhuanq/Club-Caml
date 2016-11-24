@@ -99,6 +99,8 @@ let unpack buf =
 (*
  * [have_cl frame] is true iff frame.cmd := SEND | MESSAGE | ERROR
  * cl stands for content-length header
+ *
+ * all other frames must not have a body
  *)
 let have_cl frame =
   match frame.cmd with
@@ -144,7 +146,7 @@ let pack frame =
 let send_frame frame oc =
   let buf = pack frame in
   let payload = Buffer.contents buf in
-  ignore (Lwt_io.write oc payload);
+  let _ = Lwt_io.write oc payload in
   Lwt_io.flush oc
 
 (*
@@ -190,6 +192,12 @@ let read_frame ic =
           return {cmd = cmd_of_str c; headers = lst ; body = ""})) in
   cmd >>= final
 
+(* [get_header frame name]  *)
+let get_header frame name =
+  (* try *)
+    List.assoc frame.headers name
+  (* with Not_found -> *)
+    (* "" *)
 
 let make_disconnect =
   {cmd    = DISCONNECT;

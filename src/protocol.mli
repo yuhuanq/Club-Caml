@@ -57,6 +57,8 @@ val send_frame : frame -> Lwt_io.output_channel -> unit Lwt.t
 (* [read_frame ic] is the resulting STOMP frame RECORD from reading from [ic]. *)
 val read_frame : Lwt_io.input_channel -> frame Lwt.t
 
+val get_header : frame -> string -> string
+
 (* [make_disconnect] is a STOMP DISCONNECT frame *)
 val make_disconnect  : frame
 
