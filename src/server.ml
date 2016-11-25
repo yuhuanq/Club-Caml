@@ -387,7 +387,7 @@ let create_server () =
   in serve
 
 (* initialize the server *)
-let () =
+let run_server () =
   clean_state ();
   let serve = create_server () in
   Lwt_main.run @@ serve ()

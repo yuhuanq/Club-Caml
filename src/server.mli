@@ -72,3 +72,7 @@ val create_socket : unit -> Lwt_unix.file_descr
  * accept and treats it with [accept_connection].
  *)
 val create_server : unit -> unit -> 'a Lwt.t
+
+
+(* initialize the server *)
+val run_server : unit -> 'a

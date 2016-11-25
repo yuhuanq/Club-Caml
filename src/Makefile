@@ -5,7 +5,7 @@
 
 all:
 	# ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix server.byte client.byte protocol.byte
-	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o server.byte client.byte protocol.byte
+	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o server.byte client.byte protocol.byte run_server.byte
 	# ocamlbuild -use-ocamlfind -classic-display -tag 'syntax(camlp4o)' -package str,lwt.syntax,lwt.unix,lwt client.byte protocol.byte
 
 test:
