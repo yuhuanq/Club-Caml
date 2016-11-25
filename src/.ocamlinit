@@ -2,4 +2,5 @@
 #load "str.cma";;
 #load "protocol.cmo";;
 #require "lwt";;
+#require "lwt.syntax";;
 open Lwt;;

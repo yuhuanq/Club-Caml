@@ -252,5 +252,7 @@ let make_error message body =
    body    = body }
 
 let make_info headers =
-  { cmd = INFO; headers = headers; body = ""}
+  { cmd     = INFO;
+    headers = headers;
+    body    = ""}
 
