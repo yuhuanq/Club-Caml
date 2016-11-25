@@ -63,7 +63,8 @@ module H = Hashtbl
 type state = {
   mutable connections : CSET.t;
   mutable topics : TOPICSET.t;
-  mutable queues : QSET.t;
+  (* mutable queues : QSET.t; *)
+  mutable user_map : (string,connection) H.t;
   mutable map : (string,CSET.t) H.t;
   mutable map_msg : (string, MSET.t) H.t
 }
@@ -75,13 +76,17 @@ let persist_topics =
    "/topic/Random";
    "/topic/TalkToABot"]
 
+let topic_re = Str.regexp "/topic/"
+let private_re = Str.regexp "/private/"
+
 let persist_topics_set = List.fold_left (fun acc elt -> TOPICSET.add elt acc)
                            TOPICSET.empty persist_topics
 
 let state = {
   connections = CSET.empty;
   topics = TOPICSET.empty;
-  queues = QSET.empty;
+  user_map = H.create 100;
+  (* queues = QSET.empty; *)
   map = H.create 10;
   map_msg = H.create 20;
 }
@@ -90,7 +95,8 @@ let state = {
 let clean_state () =
   state.connections <- CSET.empty;
   state.topics <- persist_topics_set;
-  state.queues <- QSET.empty;
+  (* state.queues <- QSET.empty; *)
+  state.user_map <- H.create 100;
   state.map <- H.create 20;
   List.iter (fun elt -> H.add state.map elt CSET.empty) persist_topics;
   state.map_msg <- H.create 20;
@@ -127,6 +133,13 @@ let gather_info () =
 let newi =
   let r = ref 0 in
   (fun () -> r:=!r + 1; !r)
+
+
+let handle_send_topic frame conn =
+  failwith "unimplemented"
+
+let handle_send_private frame conn =
+  failwith "unimplemented"
 
 (*
  * [handle_send] handles a SEND frame. A SEND commands sends a message to a
@@ -235,6 +248,7 @@ let handle_disconnect frame conn =
   (fun _ ->
      (* remove from  connections *)
      state.connections <- CSET.remove conn state.connections;
+     H.remove state.user_map conn.username;
      (* remove from subscriptions *)
      let f k v =
        let conns' = CSET.remove conn v in
@@ -266,9 +280,9 @@ let handle_frame frame conn =
 let rec handle_connection conn () =
   lwt frame = Protocol.read_frame conn.input in
   handle_frame frame conn >> handle_connection conn ()
-  (* Protocol.read_frame conn.input >>= *)
-  (* (fun frame -> *)
-  (* handle_frame frame conn >>= (fun () -> handle_connection conn ())) *)
+(* Protocol.read_frame conn.input >>= *)
+(* (fun frame -> *)
+(* handle_frame frame conn >>= (fun () -> handle_connection conn ())) *)
 
   (*
  * Lwt_io.read_line_opt conn.input >>=
@@ -285,13 +299,14 @@ let close_connection conn =
   Lwt_io.abort conn.output >>
   begin
     state.connections <- CSET.remove conn state.connections;
+    H.remove state.user_map conn.username;
     match conn.topic with
     | Some topic ->
       let conns = H.find state.map topic in
       let conns' = CSET.remove conn conns in
       H.replace state.map topic conns';
       return_unit
-      (* TODO: remove from queues as well *)
+    (* TODO: remove from queues as well *)
     | None ->
       return_unit
   end
@@ -314,6 +329,8 @@ let establish_connection ic oc client_id=
         } in
         let username = List.assoc "login" fr.headers in
         let conn = {input = ic; topic = None; output = oc; username = username} in
+        state.connections <- CSET.add conn state.connections;
+        H.add state.user_map conn.username conn;
         (* let _ = Protocol.send_frame reply oc in *)
         try_lwt
           Protocol.send_frame reply oc >>=

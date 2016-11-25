@@ -9,6 +9,8 @@ val port : int
 type connection = {
   input      : Lwt_io.input_channel;
   output     : Lwt_io.output_channel;
+  (* Can only be subscribed to one topic or i.e. be in one chatroom at a time *)
+  mutable topic      : string option;
   username   : string
 }
 
@@ -21,6 +23,7 @@ type message = {
 module CSET : Set.S
 module TOPICSET: Set.S
 module MSET : Set.S
+module QSET : Set.S
 
 (* Hashtable for mapping DESTINATIONS to SUBSCRIBERS *)
 module H = Hashtbl
@@ -28,6 +31,7 @@ module H = Hashtbl
 type state = {
   mutable connections : CSET.t;
   mutable topics : TOPICSET.t;
+  mutable user_map : (string,connection) H.t;
   mutable map : (string,CSET.t) H.t;
   mutable map_msg : (string, MSET.t) H.t
 }
