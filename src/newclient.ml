@@ -1,3 +1,10 @@
+(*
+ * client.ml
+ * Copyright (C) 2016 sb892 <sb892@cornell.edu>, Somrita Banerjee
+ *
+ * Distributed under terms of the MIT license.
+ *)
+
 open Lwt
 open Protocol
 
