@@ -19,6 +19,7 @@ type command = | SEND
                | MESSAGE
                | RECEIPT
                | ERROR
+               | INFO
 
 (* Stomp Frame representation type *)
 type frame = {
@@ -81,7 +82,9 @@ val make_ack         : string -> frame
 val make_connected   : string -> frame
 
 (* [make_message] is a STOMP MESSAGE frame *)
-val make_message     : string -> string -> string -> frame
+val make_message     : string -> string -> string -> string -> frame
 
 (* [make_error] is a STOMP ERROR frame *)
 val make_error       : string -> string -> frame
+
+val make_info : (string * string) list -> frame

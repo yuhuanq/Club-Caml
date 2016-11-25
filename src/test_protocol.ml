@@ -3,7 +3,7 @@
  * Copyright (C) 2016 yqiu <yqiu@f24-suntzu>
  *
  * Distributed under terms of the MIT license.
- *)
+*)
 
 open OUnit2
 open Protocol
@@ -21,8 +21,8 @@ let fr2_str = "ACK\n\n\000"
 
 
 let create_socket () =
-    let open Lwt_unix in
-    let sock = socket PF_UNIX SOCK_RAW 0 in sock
+  let open Lwt_unix in
+  let sock = socket PF_UNIX SOCK_RAW 0 in sock
 
 let fd = create_socket ()
 let ic = Lwt_io.of_fd Lwt_io.Input fd
