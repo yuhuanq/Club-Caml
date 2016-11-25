@@ -9,15 +9,19 @@ open Lwt
 open Protocol
 
 (*initialize client channel to an output that drops everything*)
+type client_channel= output_channel ref
+let cur_channel
 let (client_channel:output_channel)= null
 
 let read_password_and_login=
   failwith "unimplemented"
 
+(*open a new channel*)
 let make_a_new_channel=
   let client_channel=Lwt_io.make Lwt_io.output_channel in
   client_channel
 
+(* close a channel*)
 let close_channel=
   let messge=Lwt_io.close client_channel in
   Lwt_text.write stdout message
