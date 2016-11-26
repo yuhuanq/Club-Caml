@@ -34,18 +34,41 @@ let start_game =
   grid = Array.make_matrix 3 3 None
 }
 
-(* [make_move state move] takes in the current game state and the move that is
+(* [ended_or_not state] updates state based on whether game has ended or not. *)
+let ended_or_not state =
+  let sz = Array.length state.grid in
+  for x = 0 to sz - 1 do
+    for y = 0 to sz - 1 do
+      if x-1 >= 0 && x + 1 <= sz - 1
+        && state.grid.(x-1).(y) != None && state.grid.(x+1).(y) != None
+        then state.ended <- true
+      else if y - 1 >= 0 && y + 1 <= sz - 1
+        && state.grid.(x).(y-1) != None && state.grid.(x).(y+1) != None
+        then state.ended <- true
+      else
+        ()
+    done;
+  done;
+  ()
+
+(* [update state move] takes in the current game state and the move that is
  * to be made, and returns the new game state *)
-let make_move state move =
+let update state move =
   match move with
   | O (x, y) ->
     if state.grid.(x).(y) = None
-      then state.grid.(x).(y) <- Some true
+      then
+      (state.grid.(x).(y) <- Some true;
+      state.turns <- state.turns + 1;
+      ended_or_not state)
     else
       ()
   | X (x, y) ->
     if state.grid.(x).(y) = None
-      then state.grid.(x).(y) <- Some false
+      then
+      (state.grid.(x).(y) <- Some false;
+      state.turns <- state.turns + 1;
+      ended_or_not state)
     else
       ()
 
@@ -77,7 +100,22 @@ let state_to_string state =
   done;
   Buffer.contents buff
 
-(* [print_state state] takes in a state and prints it to the terminal.
+(* [print_state state] takes in a state and prints/draws it to the terminal.
+ * For debugging.
  *)
 let print_state state =
   state |> state_to_string |> print_string [Reset]
+
+(* [update_state_and_to_string cmd state] updates state based on string
+ * command cmd, where cmd is in the form x,y with any number of spaces.
+ * Then it returns the string form of the state which is easy for printing.
+ *)
+let update_state_and_to_string cmd state =
+  let cmd' = Str.global_replace (Str.regexp_string " ") "" cmd in
+  let (x,y) =
+    (int_of_string (String.sub cmd' 0 1),
+    int_of_string(String.sub cmd' 2 1)) in
+  if state.turns - (state.turns / 2) * 2 = 1 (* mod *)
+    then (update state (O(x,y)); (state_to_string state))
+  else
+    (update state (X(x,y)); (state_to_string state))

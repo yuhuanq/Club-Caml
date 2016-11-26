@@ -78,6 +78,7 @@ let persist_topics =
 
 let topic_re = Str.regexp "/topic/"
 let private_re = Str.regexp "/private/"
+let game_re = Str.regexp "/game/"
 
 let persist_topics_set = List.fold_left (fun acc elt -> TOPICSET.add elt acc)
                            TOPICSET.empty persist_topics
@@ -134,6 +135,8 @@ let newi =
   let r = ref 0 in
   (fun () -> r:=!r + 1; !r)
 
+let handle_send_game frame conn =
+  failwith "Unimplemented"
 
 let handle_send_topic frame conn =
   let topic = Protocol.get_header frame "destination" in
@@ -172,6 +175,7 @@ let handle_send frame conn =
     if Str.string_match topic_re topic 0 then handle_send_topic frame conn
     else if Str.string_match private_re topic 0 then handle_send_private frame
     conn
+    else if Str.string_match private_re topic 0 then handle_send_game frame conn
     else failwith "Invalid send destination"
   with Not_found | _ ->
     let err = make_error "" "Invalid destination header" in
@@ -402,4 +406,3 @@ let run_server () =
   clean_state ();
   let serve = create_server () in
   Lwt_main.run @@ serve ()
-
