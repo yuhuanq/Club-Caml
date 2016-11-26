@@ -339,18 +339,22 @@ let establish_connection ic oc client_id=
           body = "";
         } in
         let username = List.assoc "login" fr.headers in
-        let conn = {input = ic; topic = None; output = oc; username = username} in
-        state.connections <- CSET.add conn state.connections;
-        H.add state.user_map conn.username conn;
-        (* let _ = Protocol.send_frame reply oc in *)
-        try_lwt
-          Protocol.send_frame reply oc >>=
-          ( fun () -> Lwt.on_failure (handle_connection conn ()) (fun e -> Lwt_log.ign_error
-                                                                             (Printexc.to_string e));
-            Lwt_log.info ("New connection from " ^ client_id) >>= return )
-        with
-        | _ ->
-          close_connection conn
+        if H.mem state.user_map username then
+          let reply = make_error "" "Username already taken" in
+          Protocol.send_frame reply oc >> Lwt_io.abort ic
+        else
+          let conn = {input = ic; topic = None; output = oc; username = username} in
+          state.connections <- CSET.add conn state.connections;
+          H.add state.user_map conn.username conn;
+          (* let _ = Protocol.send_frame reply oc in *)
+          try_lwt
+            Protocol.send_frame reply oc >>=
+            ( fun () -> Lwt.on_failure (handle_connection conn ()) (fun e -> Lwt_log.ign_error
+                                                                               (Printexc.to_string e));
+              Lwt_log.info ("New connection from " ^ client_id) >>= return )
+          with
+          | _ ->
+            close_connection conn
       end
     | _ ->
       let reply = make_error "" "Expected a CONNECT frame" in
