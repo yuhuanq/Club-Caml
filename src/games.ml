@@ -11,7 +11,7 @@ Games module with submodules like module Tictactoe. *)
 open ANSITerminal
 
 (* game_state is the current state of the game. One of the attributes of
- * game_state should be whether it has ended.*)
+ * game_state should be whether it has ended. *)
 type game_state =
 {
   mutable ended : bool;
@@ -20,7 +20,8 @@ type game_state =
 }
 
 (* move_spec is a format to specify a move or turn to be made.
- * E.g. choosing where to place an x in tic-tac-toe, or making a move in chess*)
+ * E.g. choosing where to place an x in tic-tac-toe, or making a move in chess
+ *)
 type move_spec =
 | O of int * int
 | X of int * int
@@ -52,7 +53,7 @@ let ended_or_not state =
   ()
 
 (* [update state move] takes in the current game state and the move that is
- * to be made, and returns the new game state *)
+ * to be made, and updates game state. Returns unit *)
 let update state move =
   match move with
   | O (x, y) ->
@@ -101,7 +102,7 @@ let state_to_string state =
   Buffer.contents buff
 
 (* [print_state state] takes in a state and prints/draws it to the terminal.
- * For debugging.
+ * For debugging. And for when client prints state maybe
  *)
 let print_state state =
   state |> state_to_string |> print_string [Reset]

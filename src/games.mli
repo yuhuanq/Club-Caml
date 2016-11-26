@@ -11,7 +11,7 @@ type move_spec
 val start_game: unit -> game_state
 
 (* [update state move] takes in the current game state and the move that is
- * to be made, and updates game state. *)
+ * to be made, and updates game state. Returns unit *)
 val update: game_state -> unit
 
 (* [state_to_string state] takes in a game_state [state] and returns a string
