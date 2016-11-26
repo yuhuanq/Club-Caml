@@ -1,5 +1,6 @@
 PKG lwt
 PKG oUnit
 PKG lwt.unix
+PKG ANSITerminal
 S .
 B _build

@@ -13,24 +13,10 @@
 
 open Sys
 open Unix
+open Lwt
 
+let port_number = 9000
 (*
-(* lib function Misc.retransmit fdin fdout reads data on the descriptor fdin *)
-(* and writes it on fdout *)
-let retransmit fdin fdout =
-	let buffer_size = 4096 in
-	let buffer = Bytes.create buffer_size in
-  (* [ reads fd buff ofs len ] reads len bytes from descriptor fd, stores them *)
-  (* in byte sequence buff, starting at position ofs in buff.
-   * Returns number of bytes actually read *)
-	let rec copy () = match read fdin buffer 0 buffer_size with
-		 | 0 -> ()
-     (* [write fd buff ofs len] writes len bytes to descriptor fd, taking them *)
-     (* from byte sequence buff, starting at position ofs in buff. Returns number *)
-     (* of bytes actually written *)
-		 | n -> ignore (write fdout buffer 0 n); copy ()
-	in copy ()
-
 let server_name = Sys.argv.(1)
 let port_number = int_of_string Sys.argv.(2)
 
@@ -79,7 +65,26 @@ let client () =
       wait ()
 *)
 
-let main ipstring = print_endline ("\nConnected to "^ipstring^"!\n")
-(*
-let _ = handle_unix_error client ()
-*)
+
+
+let main ipstring =
+  try let inet_addr = inet_addr_of_string ipstring in
+  let foreignSockAddr = ADDR_INET (inet_addr,port_number) in
+  let listenSock = Lwt_unix.socket PF_INET SOCK_STREAM 0 in
+  let () = Lwt_unix.bind listenSock (ADDR_INET (inet_addr_loopback,port_number)) in
+
+  failwith "unimplemented"
+
+  with
+  | Failure _ ->
+          ANSITerminal.(print_string [red]
+            "\n\nError. Malformed IP Address.\n")
+
+
+
+
+
+
+
+
+  (**************)
