@@ -6,14 +6,14 @@ type game_state
  * E.g. choosing where to place an x in tic-tac-toe, or making a move in chess*)
 type move_spec
 
-(* Initializes a game state that is the starting point for whichever
- * game we’re playing*)
+(* [start_game] returns an initialized game state that is the starting point for
+ * whichever game we’re playing (for now, tic tac toe) *)
 val start_game: unit -> game_state
 
-(* Takes in the current game state and the move that is to be made,
- * and returns the new game state*)
+(* [make_move state move] takes in the current game state and the move that is
+ * to be made, and returns the new game state *)
 val make_move: (move_spec * game_state) -> game_state
 
-(* [return_status] takes in a [game_state] and returns a string
- * representation of the game_state *)
+(* [state_to_string state] takes in a game_state [state] and returns a string
+ * representation of it for printing. *)
 val state_to_string : game_state -> string

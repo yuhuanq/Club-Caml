@@ -1,4 +1,4 @@
 S .
 B _build
 EXT lwt
-PKG lwt.syntax lwt.unix lwt oUnit
+PKG lwt.syntax lwt.unix lwt oUnit ANSITerminal
