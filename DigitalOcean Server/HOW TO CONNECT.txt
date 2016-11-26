@@ -1,0 +1,9 @@
+Guide to ssh for our server
+
+eval `ssh-agent -s`
+ssh-add /path/to/repo/Final\ Project/DigitalOcean\ Server/key
+
+Now to connect -
+ssh root@162.243.63.41
+cd ClubOcaml
+You are now in the server local repo of our repository!
