@@ -50,6 +50,24 @@ let rec start_connection n=
   cur_connection:=newconn;
   send_frame conframe newconn.output
 
+(*(* make server listen on 127.0.0.1:9000 *)
+let listen_address = Unix.inet_addr_loopback (* or Sys.argv.(1) *)
+let port = 9000 (* or Sys.argv.(2) *)
+*)
+
+let server_address=162.243.63.41
+let port=9000
+let backlog = 10
+(*
+ * [create_socket () ] creates a socket of type stream in the internet
+ * domain with the default protocol and returns it
+ *)
+let create_socket () =
+    let open Lwt_unix in
+    let sock = socket PF_INET SOCK_STREAM 0 in
+    bind sock @@ ADDR_INET(listen_address, port);
+    listen sock backlog;
+    sock
 
 
 (*
