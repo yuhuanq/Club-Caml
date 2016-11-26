@@ -136,10 +136,30 @@ let newi =
 
 
 let handle_send_topic frame conn =
-  failwith "unimplemented"
+  let topic = Protocol.get_header frame "destination" in
+  let msg = frame.body in
+  let mid = string_of_float (Unix.gettimeofday ()) in
+  let conns = H.find state.map topic in
+  let message_frame = Protocol.make_message topic mid conn.username msg in
+  let msg_obj = {id = float_of_string mid; conn = conn; content = msg} in
+  let msg_objs = H.find state.map_msg topic in
+  let msg_objs' = MSET.add msg_obj msg_objs in
+  H.replace state.map_msg topic msg_objs';
+  let send_fun connelt =
+    ignore_result (Protocol.send_frame message_frame connelt.output) in
+  CSET.iter send_fun conns;
+  Lwt_log.info ("sent a MESSAGE frame to destination: " ^ topic) >>
+  return_unit
 
 let handle_send_private frame conn =
-  failwith "unimplemented"
+  let dest = Protocol.get_header frame "destination" in
+  let msg = frame.body in
+  let mid = string_of_float (Unix.gettimeofday ()) in
+  let recip = List.hd (Str.split private_re dest) in
+  let recip_conn = H.find state.user_map recip in
+  let message_frame = Protocol.make_message dest mid conn.username msg in
+  Protocol.send_frame message_frame recip_conn.output >>
+  Lwt_log.info ("sent a private MESSAGE frame to destination: " ^ recip)
 
 (*
  * [handle_send] handles a SEND frame. A SEND commands sends a message to a
@@ -149,20 +169,11 @@ let handle_send_private frame conn =
 let handle_send frame conn =
   try_lwt
     let topic = Protocol.get_header frame "destination" in
-    let msg = frame.body in
-    let mid = string_of_float (Unix.gettimeofday ()) in
-    let conns = H.find state.map topic in
-    let message_frame = Protocol.make_message topic mid conn.username msg in
-    let msg_obj = {id = float_of_string mid; conn = conn; content = msg} in
-    let msg_objs = H.find state.map_msg topic in
-    let msg_objs' = MSET.add msg_obj msg_objs in
-    H.replace state.map_msg topic msg_objs';
-    let send_fun connelt =
-      ignore_result (Protocol.send_frame message_frame connelt.output) in
-    CSET.iter send_fun conns;
-    Lwt_log.info ("sent a MESSAGE frame to destination: " ^ topic) >>
-    return_unit
-  with Not_found ->
+    if Str.string_match topic_re topic 0 then handle_send_topic frame conn
+    else if Str.string_match private_re topic 0 then handle_send_private frame
+    conn
+    else failwith "Invalid send destination"
+  with Not_found | _ ->
     let err = make_error "" "Invalid destination header" in
     Protocol.send_frame err conn.output >> return_unit
 
