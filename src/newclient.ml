@@ -8,14 +8,51 @@
 open Lwt
 open Protocol
 
+type connection = {
+  input      : Lwt_io.input_channel;
+  output     : Lwt_io.output_channel;
+  (* Can only be subscribed to one topic or i.e. be in one chatroom at a time *)
+  mutable topic      : string option;
+  username   : string
+}
+
+type message = {
+  id : float; (* The timestamp of the message. Unique identifier for messages with the same destination. *)
+  conn : connection;
+  content : string
+}
+
 (*initialize client channel to an output that drops everything*)
-type client_channel= output_channel ref
+(*type client_channel= output_channel ref
 let cur_channel
 let (client_channel:output_channel)= null
+*)
 
-let read_password_and_login=
-  failwith "unimplemented"
+let (emptyconn:connection)= {input=Lwt_io.zero; output=Lwt_io.null; topic=None; username=""}
+let cur_connection= ref emptyconn
 
+let read_password_and_login n=
+  let ()=print_endline "Enter login and password on separate lines" in
+  let ()=print_string "username: " in
+  let log=read_line () in
+  let ()=print_string "password: " in
+  let pass=read_line () in
+  (log,pass)
+
+let rec start_connection n=
+  let (login,pass)=read_password_and_login () in
+  let conframe=make_connect login pass in
+  (* TODO: how do i make new channels? e.g. Lwt_io.make Lwt_io.input*)
+  let newconn={input=Lwt_io.stdin;
+              output=Lwt_io.stdout;
+              topic=Some "";
+              username=login} in
+  cur_connection:=newconn;
+  send_frame conframe newconn.output
+
+
+
+(*
 (*open a new channel*)
 let make_a_new_channel=
   let client_channel=Lwt_io.make Lwt_io.output_channel in
@@ -34,3 +71,4 @@ let open_connection=
   let ochannel=make_a_new_channel in
   let (login,pass)=read_password_and_login in
   let ()=Protocol.make_connect login pass
+  *)
