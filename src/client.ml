@@ -78,10 +78,19 @@ let main ipstring =
   let () = Lwt_unix.bind sock (ADDR_INET (inet_addr_loopback,port)) in
   let _ = Lwt_unix.connect sock foreignSockAddr in
   let chToServer= Lwt_io.of_fd Lwt_io.output sock in
+  let chFromServer= Lwt_io.of_fd Lwt_io.input sock in
   let (login,pass)=read_password_and_login () in
-  let _ = start_connection login pass chToServer in
+  let _ =start_connection login pass chToServer
+  in
+  let f=function
+        |x-> Lwt_io.print x.body
+  in
+  let _=(read_frame chFromServer >>=f)
+  in
+  let _=Lwt_io.print "something" in
+  let _=print_endline "line 8" in
 
-  print_endline "sent connection frame"
+  ()
 
 
   with
