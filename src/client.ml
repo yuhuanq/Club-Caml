@@ -94,6 +94,7 @@ let main ipstring =
   | Failure _ ->
           ANSITerminal.(print_string [red]
             "\n\nError. Malformed IP Address.\n")
+  |_-> print_endline "Some other error"
 
 (*Create a socket -> connect to the the server's address -> call Lwt_io.of_fd*)
 
