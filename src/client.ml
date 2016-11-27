@@ -75,7 +75,8 @@ let main ipstring =
   try let inet_addr = inet_addr_of_string ipstring in
   let foreignSockAddr = ADDR_INET (inet_addr,port) in
   let sock = Lwt_unix.socket PF_INET SOCK_STREAM 0 in
-  let () = Lwt_unix.bind sock (ADDR_INET (inet_addr_loopback,port)) in
+  (*Do not need to bind, it is implicitly done - google this*)
+  (*let () = Lwt_unix.bind sock (ADDR_INET (inet_addr_loopback,port)) in*)
   let _ = Lwt_unix.connect sock foreignSockAddr in
   let chToServer= Lwt_io.of_fd Lwt_io.output sock in
   let chFromServer= Lwt_io.of_fd Lwt_io.input sock in
@@ -85,7 +86,7 @@ let main ipstring =
   let f=function
         |x-> Lwt_io.print x.body
   in
-  let _=(read_frame chFromServer >>=f)
+  let _ = (read_frame chFromServer >>=f)
   in
   let _=Lwt_io.print "something" in
   let _=print_endline "line 8" in
@@ -101,7 +102,7 @@ let option_to_str s=
   |Some x-> x
   |None -> ""
 
-
+(*
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
    [#join nroom] joins a new room (requires not in any room currently)
@@ -171,4 +172,5 @@ let open_connection=
   let ochannel=make_a_new_channel in
   let (login,pass)=read_password_and_login in
   let ()=Protocol.make_connect login pass
+  *)
   *)
