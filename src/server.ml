@@ -40,6 +40,11 @@ let greeting oc =
 let accept_connection conn =
     let fd, sckaddr = conn in
     let open Lwt_unix in
+    (*--------------DEBUG------------------*)
+    let _ = match sckaddr with
+            |ADDR_INET (inet_addr,num) -> print_endline(Unix.string_of_inet_addr inet_addr)
+            |_ -> () in
+    (*--------------DEBUG------------------*)
     let client_id =
       match sckaddr with
       | ADDR_INET(inet_addr,num) ->
@@ -81,4 +86,3 @@ let () =
     Lwt_main.run @@ serve ()
 
 let _ = {cmd = SEND ; headers = [] ; body = ""}
-
