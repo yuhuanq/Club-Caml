@@ -1,6 +1,7 @@
 (*
  * client.ml
- * Copyright (C) 2016 sb892 <sb892@cornell.edu>, Somrita Banerjee
+ * Copyright (C) 2016 sb892 <sb892@cornell.edu> Somrita Banerjee,
+                      ew366 <ew366@cornell.edu> Eric Wang
  *
  * Distributed under terms of the MIT license.
  *)
