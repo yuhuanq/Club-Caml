@@ -60,6 +60,8 @@ let cmd_of_str = function
   | "ERROR"       -> ERROR
   | _             -> failwith "illegal cmd string"
 
+let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun () -> f)
+
 (*
  * [frame_of_buf buf] is a frame record. Given a string [buf] in STOMP format
  * construct a frame
@@ -148,7 +150,7 @@ let pack frame =
 let send_frame frame oc =
   let buf = pack frame in
   let payload = Buffer.contents buf in
-  let _ = Lwt_io.write oc payload in
+  Lwt_io.write oc payload >>
   Lwt_io.flush oc
 
 (*
