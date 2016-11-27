@@ -42,11 +42,14 @@ let read_password_and_login ()=
 
 let start_connection login pass servchannel=
   let conframe=make_connect login pass in
+  let _=print_endline "line 7.1" in
   let newconn={input=Lwt_io.stdin;
               output=servchannel;
               topic=None;
               username=login} in
+  let _=print_endline "line 7.2" in
   cur_connection:=newconn;
+  let _=print_endline "line 7.3" in
   send_frame conframe newconn.output
 
 (*(* make server listen on 127.0.0.1:9000 *)

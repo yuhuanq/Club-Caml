@@ -141,11 +141,19 @@ let pack frame =
   Buffer.add_char buf '\x00';
   buf
 
+
+let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun () -> f)
 let send_frame frame oc =
   let buf = pack frame in
   let payload = Buffer.contents buf in
-  ignore (Lwt_io.write oc payload);
+  Lwt_io.write oc payload >>
   Lwt_io.flush oc
+
+(*let send_frame frame oc =
+  let buf = pack frame in
+  let payload = Buffer.contents buf in
+  ignore (Lwt_io.write oc payload);
+  Lwt_io.flush oc*)
 
 (*
  * [read_to_null ic] reads from input_channel [ic] until the nullbyte \x00
