@@ -57,7 +57,7 @@ let listen_address = Unix.inet_addr_loopback (* or Sys.argv.(1) *)
 let port = 9000 (* or Sys.argv.(2) *)
 *)
 
-let ipstring="162.243.63.41"
+(*let ipstring="162.243.63.41"*)
 let port=9000
 (* we're using the same port on the host machine and on the server*)
 let backlog = 10
