@@ -66,16 +66,25 @@ let backlog = 10
 
 let main ipstring =
   let open Lwt_unix in
+  let _=print_endline "line 1" in
   try let inet_addr = inet_addr_of_string ipstring in
+  let _=print_endline "line 2" in
   let foreignSockAddr = ADDR_INET (inet_addr,port) in
+  let _=print_endline "line 3" in
   let sock = Lwt_unix.socket PF_INET SOCK_STREAM 0 in
+  let _=print_endline "line 4" in
   let () = Lwt_unix.bind sock (ADDR_INET (inet_addr_loopback,port)) in
+  let _=print_endline "line 5" in
   let _ = Lwt_unix.connect sock foreignSockAddr in
+  let _=print_endline "line 6" in
   let chToServer= Lwt_io.of_fd Lwt_io.output sock in
-  let (login,pass)=read_password_and_login () in
-  let _ =start_connection login pass chToServer in
+  let _=print_endline "line 7" in
+  (*let (login,pass)=read_password_and_login () in*)
+  let _ =start_connection "login" "pass" chToServer in
+  let _=print_endline "line 8" in
 
-  print_endline "sent connection frame"
+  ()
+  (*print_endline "sent connection frame"*)
 
 
   with

@@ -2,10 +2,10 @@
 # Makefile
 # yqiu, 2016-10-27 18:33
 # ewang, 2016-11-24 6:43
-#
+# sb892, 2016-11-26 19:31
 
 all:
-	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.unix server.byte client.byte protocol.byte client.byte
+	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.unix,ANSITerminal server.byte client.byte protocol.byte client.byte
 
 test:
 	# ocamlbuild use-ocamlfind -pkgs str,lwt,lwt.unix,oUnit test_protocol.byte && ./test_protocol.byte
