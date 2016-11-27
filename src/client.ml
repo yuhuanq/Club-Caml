@@ -42,14 +42,11 @@ let read_password_and_login ()=
 
 let start_connection login pass servchannel=
   let conframe=make_connect login pass in
-  let _=print_endline "line 7.1" in
   let newconn={input=Lwt_io.stdin;
               output=servchannel;
               topic=None;
               username=login} in
-  let _=print_endline "line 7.2" in
   cur_connection:=newconn;
-  let _=print_endline "line 7.3" in
   send_frame conframe newconn.output
 
 (*(* make server listen on 127.0.0.1:9000 *)
@@ -69,23 +66,14 @@ let backlog = 10
 
 let main ipstring =
   let open Lwt_unix in
-  let _=print_endline "line 1" in
   try let inet_addr = inet_addr_of_string ipstring in
-  let _=print_endline "line 2" in
   let foreignSockAddr = ADDR_INET (inet_addr,port) in
-  let _=print_endline "line 3" in
   let sock = Lwt_unix.socket PF_INET SOCK_STREAM 0 in
-  let _=print_endline "line 4" in
   let () = Lwt_unix.bind sock (ADDR_INET (inet_addr_loopback,port)) in
-  let _=print_endline "line 5" in
   let _ = Lwt_unix.connect sock foreignSockAddr in
-  let _=print_endline "line 6" in
   let chToServer= Lwt_io.of_fd Lwt_io.output sock in
-  let _=print_endline "line 7" in
   let (login,pass)=read_password_and_login () in
-  let _ =start_connection login pass chToServer in
-  let _=print_endline "line 8" in
-
+  let _ = start_connection login pass chToServer in
 
   print_endline "sent connection frame"
 

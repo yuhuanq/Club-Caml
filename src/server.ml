@@ -9,7 +9,7 @@ open Lwt
 open Protocol
 
 (* make server listen on 127.0.0.1:9000 *)
-let listen_address = Unix.inet_addr_loopback (* or Sys.argv.(1) *)
+let listen_address = Unix.inet_addr_of_string ("162.243.63.41")
 let port = 9000 (* or Sys.argv.(2) *)
 let backlog = 10 (* max num of connections? not working *)
 
