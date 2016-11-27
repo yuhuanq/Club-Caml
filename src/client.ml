@@ -82,12 +82,12 @@ let main ipstring =
   let _=print_endline "line 6" in
   let chToServer= Lwt_io.of_fd Lwt_io.output sock in
   let _=print_endline "line 7" in
-  (*let (login,pass)=read_password_and_login () in*)
-  let _ =start_connection "login" "pass" chToServer in
+  let (login,pass)=read_password_and_login () in
+  let _ =start_connection login pass chToServer in
   let _=print_endline "line 8" in
 
-  ()
-  (*print_endline "sent connection frame"*)
+
+  print_endline "sent connection frame"
 
 
   with
