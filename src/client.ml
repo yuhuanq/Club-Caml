@@ -83,15 +83,66 @@ let main ipstring =
   in
   let _=Lwt_io.print "something" in
   let _=print_endline "line 8" in
-
   ()
-
-
   with
   | Failure _ ->
           ANSITerminal.(print_string [red]
             "\n\nError. Malformed IP Address.\n")
   |_-> print_endline "Some other error"
+
+let option_to_str s=
+  match s with
+  |Some x-> x
+  |None -> ""
+
+
+(* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
+   [#leave] leaves room (unsubscribe)
+   [#join nroom] joins a new room (requires not in any room currently)
+   [#game] plays a game
+   [#chatbot] changes to chatbot room
+   [#quit] closes the connection to server
+ Note: only change, leave, join, and quit implemented*)
+
+let rec repl  =
+  let directive=read_line () in
+  let cur_topic=option_to_str ((!cur_connection).topic) in
+  let firstletter=directive.[0] in
+  match firstletter with
+  |'#'->
+    begin
+    match directive with
+    |"#leave"-> let unsubframe=make_unsubscribe cur_topic in
+                send_frame unsubframe (!cur_connection).output
+    |"#quit"-> let disconframe=make_disconnect in
+               send_frame disconframe (!cur_connection).output
+    |_->
+        let partOfDir=String.sub directive 0 7 in
+        begin
+        match partOfDir with
+        |"#change"->
+          let nroom=String.sub directive 8 ((String.length directive)-8) in
+          let unsubframe=make_unsubscribe cur_topic in
+          let subframe=make_subscribe nroom in
+          send_frame unsubframe (!cur_connection).output >>=
+          (fun ()->send_frame subframe (!cur_connection).output)
+        |_->
+          let partOfDir2=String.sub directive 0 5 in
+          begin
+          match partOfDir2 with
+          |"#join"->
+          let nroom=String.sub directive 6 ((String.length directive)-6) in
+          let subframe=make_subscribe nroom in
+          send_frame subframe (!cur_connection).output
+          |_-> failwith "Unimplemented"
+          end
+        end
+    end
+  | _->
+    let msgid=string_of_float(Unix.gettimeofday ()) in
+    let msgframe= make_message cur_topic directive msgid in
+    send_frame msgframe (!cur_connection).output
+
 
 (*Create a socket -> connect to the the server's address -> call Lwt_io.of_fd*)
 
