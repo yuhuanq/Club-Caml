@@ -5,6 +5,7 @@
  * Distributed under terms of the MIT license.
  *)
 
+open Unix
 open Lwt
 open Protocol
 
@@ -12,7 +13,7 @@ type connection = {
   input      : Lwt_io.input_channel;
   output     : Lwt_io.output_channel;
   (* Can only be subscribed to one topic or i.e. be in one chatroom at a time *)
-  mutable topic      : string option;
+  mutable topic : string option;
   username   : string
 }
 
@@ -31,7 +32,7 @@ let (client_channel:output_channel)= null
 let (emptyconn:connection)= {input=Lwt_io.zero; output=Lwt_io.null; topic=None; username=""}
 let cur_connection= ref emptyconn
 
-let read_password_and_login n=
+let read_password_and_login ()=
   let ()=print_endline "Enter login and password on separate lines" in
   let ()=print_string "username: " in
   let log=read_line () in
@@ -39,13 +40,11 @@ let read_password_and_login n=
   let pass=read_line () in
   (log,pass)
 
-let rec start_connection n=
-  let (login,pass)=read_password_and_login () in
+let start_connection login pass servchannel=
   let conframe=make_connect login pass in
-  (* TODO: how do i make new channels? e.g. Lwt_io.make Lwt_io.input*)
   let newconn={input=Lwt_io.stdin;
-              output=Lwt_io.stdout;
-              topic=Some "";
+              output=servchannel;
+              topic=None;
               username=login} in
   cur_connection:=newconn;
   send_frame conframe newconn.output
@@ -55,20 +54,36 @@ let listen_address = Unix.inet_addr_loopback (* or Sys.argv.(1) *)
 let port = 9000 (* or Sys.argv.(2) *)
 *)
 
-let server_address=162.243.63.41
+let ipstring="162.243.63.41"
 let port=9000
+(* we're using the same port on the host machine and on the server*)
 let backlog = 10
+
 (*
- * [create_socket () ] creates a socket of type stream in the internet
+ * [main () ] creates a socket of type stream in the internet
  * domain with the default protocol and returns it
  *)
-let create_socket () =
-    let open Lwt_unix in
-    let sock = socket PF_INET SOCK_STREAM 0 in
-    bind sock @@ ADDR_INET(listen_address, port);
-    listen sock backlog;
-    sock
 
+let main ipstring =
+  let open Lwt_unix in
+  try let inet_addr = inet_addr_of_string ipstring in
+  let foreignSockAddr = ADDR_INET (inet_addr,port) in
+  let sock = Lwt_unix.socket PF_INET SOCK_STREAM 0 in
+  let () = Lwt_unix.bind sock (ADDR_INET (inet_addr_loopback,port)) in
+  let _ = Lwt_unix.connect sock foreignSockAddr in
+  let chToServer= Lwt_io.of_fd Lwt_io.output sock in
+  let (login,pass)=read_password_and_login () in
+  let _ =start_connection login pass chToServer in
+
+  print_endline "sent connection frame"
+
+
+  with
+  | Failure _ ->
+          ANSITerminal.(print_string [red]
+            "\n\nError. Malformed IP Address.\n")
+
+(*Create a socket -> connect to the the server's address -> call Lwt_io.of_fd*)
 
 (*
 (*open a new channel*)
