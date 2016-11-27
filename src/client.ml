@@ -85,10 +85,15 @@ let main ipstring =
   let _=print_endline "line 7" in
   let (login,pass)=read_password_and_login () in
   let _ =start_connection login pass chToServer
-  >>= read_frame chFromServer in print_endline "something"
-in
-  let _=print_endline "line 8" in
+  in
+  let f=function
+        |x-> Lwt_io.print x.body
+  in
+  let _=(read_frame chFromServer >>=f)
+  in
   let _=Lwt_io.print "something" in
+  let _=print_endline "line 8" in
+
   ()
 
 
