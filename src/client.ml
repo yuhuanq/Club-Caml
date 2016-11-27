@@ -81,13 +81,16 @@ let main ipstring =
   let _ = Lwt_unix.connect sock foreignSockAddr in
   let _=print_endline "line 6" in
   let chToServer= Lwt_io.of_fd Lwt_io.output sock in
+  let chFromServer=Lwt_io.of_fd Lwt_io.input sock in
   let _=print_endline "line 7" in
   let (login,pass)=read_password_and_login () in
-  let _ =start_connection login pass chToServer in
+  let _ =start_connection login pass chToServer
+  >>= read_frame chFromServer in print_endline "something"
+in
   let _=print_endline "line 8" in
+  let _=Lwt_io.print "something" in
+  ()
 
-
-  print_endline "sent connection frame"
 
 
   with
