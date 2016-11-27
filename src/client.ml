@@ -1,90 +1,107 @@
 (*
  * client.ml
- * Copyright (C) 2016 yqiu <yqiu@f24-suntzu>, Eric Wang
+ * Copyright (C) 2016 sb892 <sb892@cornell.edu>, Somrita Banerjee
  *
  * Distributed under terms of the MIT license.
  *)
-(*
- * client
- * client host port establishes a connection on the port port of the machine named
- * host, sends on the resulting socket the data it reads on its standard input and
- * writes the data it receives on its standard output.
- *)
 
-open Sys
 open Unix
 open Lwt
+open Protocol
 
-let port_number = 9000
-(*
-let server_name = Sys.argv.(1)
-let port_number = int_of_string Sys.argv.(2)
+type connection = {
+  input      : Lwt_io.input_channel;
+  output     : Lwt_io.output_channel;
+  (* Can only be subscribed to one topic or i.e. be in one chatroom at a time *)
+  mutable topic : string option;
+  username   : string
+}
 
-let is_valid_args () =
-  if Array.length Sys.argv < 3 then
-    begin
-      prerr_endline "Usage: client <host> <port>";
-      exit 2
-    end
+type message = {
+  id : float; (* The timestamp of the message. Unique identifier for messages with the same destination. *)
+  conn : connection;
+  content : string
+}
 
-let get_server_addr server_name =
-  try
-    (gethostbyname server_name).h_addr_list.(0)
-  with Not_found ->
-    prerr_endline (server_name ^ ": Host not found");
-    exit 2
-
-let client () =
-  is_valid_args ();
-  let server_addr = get_server_addr server_name in
-  let sock = socket PF_INET SOCK_STREAM 0 in
-  (* system call connect establishes a connection with a server on a socket. *)
-  (* client side socket here *)
-  connect sock (ADDR_INET(server_addr, port_number));
-  (********************************
-  *  A bit lost here on fork ()  *
-  ********************************)
-  (* val fork : unit -> int *)
-  (* fork a new process. The returned integer is 0 for the child process, the pid *)
-  (* of the child process for the parent process *)
-  match fork () with
-  | 0 ->
-      (* stdin = file descriptor for standard input *)
-      (* child process copies the data from its stdin to the socket *)
-      retransmit stdin sock;
-      (* close the socket for writing only.  *)
-      shutdown sock SHUTDOWN_SEND;
-      exit 0
-  | _ ->
-      (* read from sock and write to stdout *)
-      (* parent process copies data it reads on the socket to its stdout *)
-      retransmit sock stdout;
-      (* closes the read and write sides of the connectoin, and deallocates the *)
-      (* socket *)
-      close stdout;
-      wait ()
+(*initialize client channel to an output that drops everything*)
+(*type client_channel= output_channel ref
+let cur_channel
+let (client_channel:output_channel)= null
 *)
 
+let (emptyconn:connection)= {input=Lwt_io.zero; output=Lwt_io.null; topic=None; username=""}
+let cur_connection= ref emptyconn
 
+let read_password_and_login ()=
+  let ()=print_endline "Enter login and password on separate lines" in
+  let ()=print_string "username: " in
+  let log=read_line () in
+  let ()=print_string "password: " in
+  let pass=read_line () in
+  (log,pass)
+
+let start_connection login pass servchannel=
+  let conframe=make_connect login pass in
+  let newconn={input=Lwt_io.stdin;
+              output=servchannel;
+              topic=None;
+              username=login} in
+  cur_connection:=newconn;
+  send_frame conframe newconn.output
+
+(*(* make server listen on 127.0.0.1:9000 *)
+let listen_address = Unix.inet_addr_loopback (* or Sys.argv.(1) *)
+let port = 9000 (* or Sys.argv.(2) *)
+*)
+
+let ipstring="162.243.63.41"
+let port=9000
+(* we're using the same port on the host machine and on the server*)
+let backlog = 10
+
+(*
+ * [main () ] creates a socket of type stream in the internet
+ * domain with the default protocol and returns it
+ *)
 
 let main ipstring =
+  let open Lwt_unix in
   try let inet_addr = inet_addr_of_string ipstring in
-  let foreignSockAddr = ADDR_INET (inet_addr,port_number) in
-  let listenSock = Lwt_unix.socket PF_INET SOCK_STREAM 0 in
-  let () = Lwt_unix.bind listenSock (ADDR_INET (inet_addr_loopback,port_number)) in
+  let foreignSockAddr = ADDR_INET (inet_addr,port) in
+  let sock = Lwt_unix.socket PF_INET SOCK_STREAM 0 in
+  let () = Lwt_unix.bind sock (ADDR_INET (inet_addr_loopback,port)) in
+  let _ = Lwt_unix.connect sock foreignSockAddr in
+  let chToServer= Lwt_io.of_fd Lwt_io.output sock in
+  let (login,pass)=read_password_and_login () in
+  let _ =start_connection login pass chToServer in
 
-  failwith "unimplemented"
+  print_endline "sent connection frame"
+
 
   with
   | Failure _ ->
           ANSITerminal.(print_string [red]
             "\n\nError. Malformed IP Address.\n")
 
+(*Create a socket -> connect to the the server's address -> call Lwt_io.of_fd*)
 
+(*
+(*open a new channel*)
+let make_a_new_channel=
+  let client_channel=Lwt_io.make Lwt_io.output_channel in
+  client_channel
 
+(* close a channel*)
+let close_channel=
+  let messge=Lwt_io.close client_channel in
+  Lwt_text.write stdout message
 
+let close_connection=
+  let ()=Protocol.make_disconnect in
+  let ()=close_channel
 
-
-
-
-  (**************)
+let open_connection=
+  let ochannel=make_a_new_channel in
+  let (login,pass)=read_password_and_login in
+  let ()=Protocol.make_connect login pass
+  *)

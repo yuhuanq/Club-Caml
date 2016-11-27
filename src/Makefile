@@ -5,7 +5,7 @@
 #
 
 all:
-	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.unix server.byte client.byte protocol.byte newclient.byte
+	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.unix server.byte client.byte protocol.byte client.byte
 
 test:
 	# ocamlbuild use-ocamlfind -pkgs str,lwt,lwt.unix,oUnit test_protocol.byte && ./test_protocol.byte
