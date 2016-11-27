@@ -86,8 +86,8 @@ let main ipstring =
   let _ =start_connection login pass chToServer in
   let _=print_endline "line 8" in
 
-  ()
-  (*print_endline "sent connection frame"*)
+
+  print_endline "sent connection frame"
 
 
   with
