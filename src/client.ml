@@ -33,11 +33,17 @@ let (emptyconn:connection)= {input=Lwt_io.zero; output=Lwt_io.null; topic=None; 
 let cur_connection= ref emptyconn
 
 let read_password_and_login ()=
-  let ()=print_endline "Enter login and password on separate lines" in
+  let ()= ANSITerminal.(print_string [cyan]
+            "\nEnter login and password on seperate lines.\n") in
   let ()=print_string "username: " in
   let log=read_line () in
-  let ()=print_string "password: " in
+  let ()=print_string "password " in
+  let ()= ANSITerminal.(print_string [red]
+            "(WARNING:PLAIN TEXT)") in
+  let ()=print_string ":" in
   let pass=read_line () in
+  let ()=print_string "\n\n" in
+
   (log,pass)
 
 let start_connection login pass servchannel=
