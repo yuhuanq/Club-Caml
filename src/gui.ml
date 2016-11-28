@@ -71,18 +71,32 @@ let main () =
   ignore(leftPaned#set_position (600));
 
   (*Chat box widget*)
-  let chatView = GText.view ~wrap_mode:`WORD ~editable:false
-                            ~packing:leftPaned#add () in
-  ignore(chatView#connect);
+  let adjustment = GData.adjustment () in
+  let scrolledWindow = GBin.scrolled_window ~vadjustment:adjustment
+                                            ~packing:leftPaned#add () in
 
+  let chatView = GText.view ~wrap_mode:`WORD ~editable:false
+                            ~packing:scrolledWindow#add () in
+
+  let chatBuffer = GText.buffer ~text:"Welcome to Club Caml!\n" () in
+
+  ignore(chatView#set_buffer chatBuffer);
+
+
+  (*
   (*Users in room*)
-  (*let pane = failwith "unimplemented" in *)
+  let usrWindow = GBin.scrolled_window in
+  let usrs = new GTree.column_list in
+  let usrColumn = usrs#add Gobject.Data.string in
+  let rightPaneUsrList = GTree.view ~model: *)
 
   (*User text entry widget*)
   let enter_cb entry () =
     let text = entry#text in
 
     print_endline (text^("\n"));
+    chatBuffer#insert (text^("\n"));
+    adjustment#set_value (adjustment#upper);
     entry#set_text "" in
 
   let entry = GEdit.entry ~max_length:500 ~packing:leftPaned#add () in
