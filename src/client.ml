@@ -24,6 +24,8 @@ type message = {
   content : string
 }
 
+let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun () -> f)
+
 (*initialize client channel to an output that drops everything*)
 (*type client_channel= output_channel ref
 let cur_channel
@@ -115,7 +117,8 @@ let handle_message msg cur_topic=
   let sender=(!cur_connection).username in
   let msgframe= make_message cur_topic msgid sender msg in
   send_frame msgframe (!cur_connection).output
-  (* TODO: handle incoming messages*)
+
+(* TODO: handle incoming messages*)
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
@@ -157,7 +160,7 @@ let rec repl () =
     handle_message directive cur_topic
   >>=
   (fun ()-> Lwt_io.print "Sent a frame")
-  >>= repl
+  >> repl ()
 
 (*
  * [main () ] creates a socket of type stream in the internet
@@ -185,9 +188,8 @@ let main ipstring =
   let _ =
   (start_connection login pass chToServer
     >>=(fun ()->(read_frame chFromServer >>=f)))
-  in
-  let _=Lwt_io.print "printing something\n" in
-  let _=repl ()
+  >>Lwt_io.print "printing something\n"
+  >>repl ()
   in ()
   with
   | Failure _ ->
