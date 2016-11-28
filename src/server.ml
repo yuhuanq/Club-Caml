@@ -192,6 +192,7 @@ let handle_subscribe frame conn =
     let conns = H.find state.map topic in
     let conns' = CSET.add conn' conns in
     H.replace state.map topic conns';
+    let _=print_endline (conn.username ^ " subscribed to " ^ topic) in
     Lwt_log.info (conn.username ^ " subscribed to " ^ topic) >>
     return_unit
   with Not_found ->
