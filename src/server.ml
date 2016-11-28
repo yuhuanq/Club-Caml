@@ -383,6 +383,7 @@ let accept_connection (fd, sckaddr) =
       let open Unix in
       string_of_inet_addr inet_addr
     | _ -> "unknown" in
+  let _=print_endline ("client connected of id "^client_id) in
   let ic = Lwt_io.of_fd Lwt_io.Input fd in
   let oc = Lwt_io.of_fd Lwt_io.Output fd in
   establish_connection ic oc client_id
@@ -404,6 +405,7 @@ let create_socket () =
  * accept and treats it with [accept_connection].
 *)
 let create_server () =
+  let _=print_endline "Creating socket\n" in
   let server_socket = create_socket () in
   let rec serve () =
     let client = Lwt_unix.accept server_socket in
@@ -412,7 +414,7 @@ let create_server () =
 
 (* initialize the server *)
 let run_server () =
-  let _=print_endline "Running server" in
+  let _=print_endline "Running server\n" in
   clean_state ();
   let serve = create_server () in
   Lwt_main.run @@ serve ()
