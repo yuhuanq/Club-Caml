@@ -66,44 +66,12 @@ let port=9000
 (* we're using the same port on the host machine and on the server*)
 let backlog = 10
 
-(*
- * [main () ] creates a socket of type stream in the internet
- * domain with the default protocol and returns it
- *)
-
-let main ipstring =
-  let open Lwt_unix in
-  try let inet_addr = inet_addr_of_string ipstring in
-  let foreignSockAddr = ADDR_INET (inet_addr,port) in
-  let sock = Lwt_unix.socket PF_INET SOCK_STREAM 0 in
-  (*Do not need to bind, it is implicitly done - google this*)
-  (*let () = Lwt_unix.bind sock (ADDR_INET (inet_addr_loopback,port)) in*)
-  let _ = Lwt_unix.connect sock foreignSockAddr in
-  let chToServer= Lwt_io.of_fd Lwt_io.output sock in
-  let chFromServer= Lwt_io.of_fd Lwt_io.input sock in
-  let (login,pass)=read_password_and_login () in
-  let _ =start_connection login pass chToServer
-  in
-  let f=function
-        |x-> Lwt_io.print x.body
-  in
-  let _ = (read_frame chFromServer >>=f)
-  in
-  let _=Lwt_io.print "something" in
-  let _=print_endline "line 8" in
-  ()
-  with
-  | Failure _ ->
-          ANSITerminal.(print_string [red]
-            "\n\nError. Malformed IP Address.\n")
-  |_-> print_endline "Some other error"
-
 let option_to_str s=
   match s with
   |Some x-> x
   |None -> ""
 
-(*
+
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
    [#join nroom] joins a new room (requires not in any room currently)
@@ -112,7 +80,7 @@ let option_to_str s=
    [#quit] closes the connection to server
  Note: only change, leave, join, and quit implemented*)
 
-let rec repl  =
+let rec repl () =
   let directive=read_line () in
   let cur_topic=option_to_str ((!cur_connection).topic) in
   let firstletter=directive.[0] in
@@ -150,6 +118,43 @@ let rec repl  =
     let msgid=string_of_float(Unix.gettimeofday ()) in
     let msgframe= make_message cur_topic directive msgid in
     send_frame msgframe (!cur_connection).output
+  >>=
+  (fun ()-> Lwt_io.print "Sent a frame")
+
+(*
+ * [main () ] creates a socket of type stream in the internet
+ * domain with the default protocol and returns it
+ *)
+
+let main ipstring =
+  let open Lwt_unix in
+  try let inet_addr = inet_addr_of_string ipstring in
+  let foreignSockAddr = ADDR_INET (inet_addr,port) in
+  let sock = Lwt_unix.socket PF_INET SOCK_STREAM 0 in
+  (*Do not need to bind, it is implicitly done - google this*)
+  (*let () = Lwt_unix.bind sock (ADDR_INET (inet_addr_loopback,port)) in*)
+  let _ = Lwt_unix.connect sock foreignSockAddr in
+  let chToServer= Lwt_io.of_fd Lwt_io.output sock in
+  let chFromServer= Lwt_io.of_fd Lwt_io.input sock in
+  let (login,pass)=read_password_and_login () in
+  let _ =start_connection login pass chToServer
+  in
+  let f=function
+        |x-> Lwt_io.print x.body
+  in
+  let _ = (read_frame chFromServer >>=f)
+  in
+  let _=Lwt_io.print "something" in
+  let _=print_endline "line 8" in
+  let _=repl ()
+  in ()
+  with
+  | Failure _ ->
+          ANSITerminal.(print_string [red]
+            "\n\nError. Malformed IP Address.\n")
+  |_-> print_endline "Some other error"
+
+
 
 
 (*Create a socket -> connect to the the server's address -> call Lwt_io.of_fd*)
@@ -174,4 +179,4 @@ let open_connection=
   let (login,pass)=read_password_and_login in
   let ()=Protocol.make_connect login pass
   *)
-  *)
+
