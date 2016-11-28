@@ -71,6 +71,51 @@ let option_to_str s=
   |Some x-> x
   |None -> ""
 
+let handle_leave cur_topic=
+  let unsubframe=make_unsubscribe cur_topic in
+  let f=function
+        |x->
+          match x.cmd with
+          |INFO-> Lwt_io.print ("INFO frame recvd")>>=
+          (fun ()->Lwt_io.print ("body of frame recvd: "^x.body))
+          (* TODO: print header to user*)
+          |_-> Lwt_io.print "expected INFO frame"
+  in
+  send_frame unsubframe (!cur_connection).output>>=
+    (fun ()->(read_frame (!cur_connection).input >>=f))
+
+let handle_quit =
+  let _=print_endline "Quitting the application\n" in
+  let disconframe=make_disconnect in
+  send_frame disconframe (!cur_connection).output
+
+let handle_change nroom cur_topic=
+  let unsubframe=make_unsubscribe cur_topic in
+  let subframe=make_subscribe nroom in
+  let f=function
+        |x->
+          match x.cmd with
+          |INFO-> Lwt_io.print ("INFO frame recvd")>>=
+          (fun ()->Lwt_io.print ("body of frame recvd: "^x.body))
+          (* TODO: print header to user*)
+          |_-> Lwt_io.print "expected INFO frame"
+  in
+  send_frame unsubframe (!cur_connection).output >>=
+  (fun ()->(read_frame (!cur_connection).input >>=f))>>=
+  (fun ()->send_frame subframe (!cur_connection).output)
+
+
+let handle_join nroom=
+  let _=print_endline ("Attempting to join room "^nroom^"\n") in
+  let subframe=make_subscribe nroom in
+  send_frame subframe (!cur_connection).output
+
+let handle_message msg cur_topic=
+  let msgid=string_of_float(Unix.gettimeofday ()) in
+  let sender=(!cur_connection).username in
+  let msgframe= make_message cur_topic msgid sender msg in
+  send_frame msgframe (!cur_connection).output
+  (* TODO: handle incoming messages*)
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
@@ -88,41 +133,31 @@ let rec repl () =
   |'#'->
     begin
     match directive with
-    |"#leave"-> let unsubframe=make_unsubscribe cur_topic in
-                send_frame unsubframe (!cur_connection).output
-    |"#quit"-> let _=print_endline "Quitting the application\n" in
-               let disconframe=make_disconnect in
-               send_frame disconframe (!cur_connection).output
+    |"#leave"-> handle_leave cur_topic
+    |"#quit"-> handle_quit
     |_->
         let partOfDir=String.sub directive 0 7 in
         begin
         match partOfDir with
         |"#change"->
           let nroom=String.sub directive 8 ((String.length directive)-8) in
-          let unsubframe=make_unsubscribe cur_topic in
-          let subframe=make_subscribe nroom in
-          send_frame unsubframe (!cur_connection).output >>=
-          (fun ()->send_frame subframe (!cur_connection).output)
+          handle_change nroom cur_topic
         |_->
           let partOfDir2=String.sub directive 0 5 in
           begin
           match partOfDir2 with
           |"#join"->
-          let nroom=String.sub directive 6 ((String.length directive)-6) in
-          let _=print_endline ("Attempting to join room "^nroom^"\n") in
-          let subframe=make_subscribe nroom in
-          send_frame subframe (!cur_connection).output
+            let nroom=String.sub directive 6 ((String.length directive)-6) in
+            handle_join nroom
           |_-> failwith "Unimplemented"
           end
         end
     end
   | _->
-    let msgid=string_of_float(Unix.gettimeofday ()) in
-    let sender=(!cur_connection).username in
-    let msgframe= make_message cur_topic msgid sender directive in
-    send_frame msgframe (!cur_connection).output
+    handle_message directive cur_topic
   >>=
   (fun ()-> Lwt_io.print "Sent a frame")
+  >>= repl
 
 (*
  * [main () ] creates a socket of type stream in the internet
@@ -140,15 +175,18 @@ let main ipstring =
   let chToServer= Lwt_io.of_fd Lwt_io.output sock in
   let chFromServer= Lwt_io.of_fd Lwt_io.input sock in
   let (login,pass)=read_password_and_login () in
-  let _ =start_connection login pass chToServer
-  in
   let f=function
-        |x-> Lwt_io.print x.body
+        |x->
+          match x.cmd with
+          |CONNECTED-> Lwt_io.print ("CONNECTED frame recvd")>>=
+          (fun ()->Lwt_io.print ("body of frame recvd: "^x.body))
+          |_-> Lwt_io.print "expected CONNECTED frame"
   in
-  let _ = (read_frame chFromServer >>=f)
+  let _ =
+  (start_connection login pass chToServer
+    >>=(fun ()->(read_frame chFromServer >>=f)))
   in
-  let _=Lwt_io.print "something" in
-  let _=print_endline "line 8" in
+  let _=Lwt_io.print "printing something\n" in
   let _=repl ()
   in ()
   with
@@ -158,28 +196,4 @@ let main ipstring =
   |_-> print_endline "Some other error"
 
 
-
-
-(*Create a socket -> connect to the the server's address -> call Lwt_io.of_fd*)
-
-(*
-(*open a new channel*)
-let make_a_new_channel=
-  let client_channel=Lwt_io.make Lwt_io.output_channel in
-  client_channel
-
-(* close a channel*)
-let close_channel=
-  let messge=Lwt_io.close client_channel in
-  Lwt_text.write stdout message
-
-let close_connection=
-  let ()=Protocol.make_disconnect in
-  let ()=close_channel
-
-let open_connection=
-  let ochannel=make_a_new_channel in
-  let (login,pass)=read_password_and_login in
-  let ()=Protocol.make_connect login pass
-  *)
 
