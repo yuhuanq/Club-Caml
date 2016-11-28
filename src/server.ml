@@ -336,6 +336,7 @@ let close_connection conn =
 *)
 let establish_connection ic oc client_id=
   let f fr =
+    let _=print_endline "Received some frame" in
     match fr.cmd with
     | CONNECT ->
       let _=print_endline ("New connection from " ^ client_id) in
@@ -411,6 +412,7 @@ let create_server () =
 
 (* initialize the server *)
 let run_server () =
+  let _=print_endline "Running server" in
   clean_state ();
   let serve = create_server () in
   Lwt_main.run @@ serve ()
