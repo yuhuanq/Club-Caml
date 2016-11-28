@@ -289,8 +289,10 @@ let handle_frame frame conn =
             handle_send frame conn
   | SUBSCRIBE -> let _=print_endline "Received a subscribe frame" in
                  handle_subscribe frame conn
-  | UNSUBSCRIBE -> handle_unsubscribe frame conn
-  | DISCONNECT -> handle_disconnect frame conn
+  | UNSUBSCRIBE -> let _=print_endline "Received an unsubscribe frame" in
+                   handle_unsubscribe frame conn
+  | DISCONNECT -> let _=print_endline "Received a disconnect frame" in
+                  handle_disconnect frame conn
   | _ -> failwith "invalid client frame"
 
 let rec handle_connection conn () =
@@ -336,6 +338,7 @@ let establish_connection ic oc client_id=
   let f fr =
     match fr.cmd with
     | CONNECT ->
+      let _=print_endline ("New connection from " ^ client_id) in
       begin
         (* let reply = make_connected (string_of_int (newi ()) ) in *)
         let reply = {
