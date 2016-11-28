@@ -285,8 +285,10 @@ let handle_disconnect frame conn =
 
 let handle_frame frame conn =
   match frame.cmd with
-  | SEND -> handle_send frame conn
-  | SUBSCRIBE -> handle_subscribe frame conn
+  | SEND -> let _=print_endline "Received a send frame" in
+            handle_send frame conn
+  | SUBSCRIBE -> let _=print_endline "Received a subscribe frame" in
+                 handle_subscribe frame conn
   | UNSUBSCRIBE -> handle_unsubscribe frame conn
   | DISCONNECT -> handle_disconnect frame conn
   | _ -> failwith "invalid client frame"
