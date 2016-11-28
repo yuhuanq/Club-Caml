@@ -19,6 +19,7 @@ type command = | SEND
                | MESSAGE
                | RECEIPT
                | ERROR
+               | INFO
 
 (* Stomp Frame representation type *)
 type frame = {
@@ -57,6 +58,8 @@ val send_frame : frame -> Lwt_io.output_channel -> unit Lwt.t
 (* [read_frame ic] is the resulting STOMP frame RECORD from reading from [ic]. *)
 val read_frame : Lwt_io.input_channel -> frame Lwt.t
 
+val get_header : frame -> string -> string
+
 (* [make_disconnect] is a STOMP DISCONNECT frame *)
 val make_disconnect  : frame
 
@@ -79,7 +82,9 @@ val make_ack         : string -> frame
 val make_connected   : string -> frame
 
 (* [make_message] is a STOMP MESSAGE frame *)
-val make_message     : string -> string -> string -> frame
+val make_message     : string -> string -> string -> string -> frame
 
 (* [make_error] is a STOMP ERROR frame *)
 val make_error       : string -> string -> frame
+
+val make_info : (string * string) list -> frame

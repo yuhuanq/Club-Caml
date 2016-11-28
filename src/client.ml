@@ -116,7 +116,8 @@ let rec repl () =
     end
   | _->
     let msgid=string_of_float(Unix.gettimeofday ()) in
-    let msgframe= make_message cur_topic directive msgid in
+    let sender=(!cur_connection).username in
+    let msgframe= make_message cur_topic msgid sender directive in
     send_frame msgframe (!cur_connection).output
   >>=
   (fun ()-> Lwt_io.print "Sent a frame")
