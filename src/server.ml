@@ -201,6 +201,8 @@ let handle_subscribe frame conn =
     let msgs = MSET.empty in
     H.add state.map topic conns;
     H.add state.map_msg topic msgs;
+    let _=print_endline ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "
+                   subscribed to " ^ topic) in
     Lwt_log.info ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "
                    subscribed to " ^ topic) >>
     return ()

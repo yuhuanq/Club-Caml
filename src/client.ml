@@ -90,7 +90,8 @@ let rec repl () =
     match directive with
     |"#leave"-> let unsubframe=make_unsubscribe cur_topic in
                 send_frame unsubframe (!cur_connection).output
-    |"#quit"-> let disconframe=make_disconnect in
+    |"#quit"-> let _=print_endline "Quitting the application\n" in
+               let disconframe=make_disconnect in
                send_frame disconframe (!cur_connection).output
     |_->
         let partOfDir=String.sub directive 0 7 in
@@ -108,6 +109,7 @@ let rec repl () =
           match partOfDir2 with
           |"#join"->
           let nroom=String.sub directive 6 ((String.length directive)-6) in
+          let _=print_endline ("Attempting to join room "^nroom^"\n") in
           let subframe=make_subscribe nroom in
           send_frame subframe (!cur_connection).output
           |_-> failwith "Unimplemented"
