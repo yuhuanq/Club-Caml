@@ -2,5 +2,7 @@ PKG lwt
 PKG oUnit
 PKG lwt.unix
 PKG ANSITerminal
-S .
+PKG lablgtk2
+
+S . inst
 B _build

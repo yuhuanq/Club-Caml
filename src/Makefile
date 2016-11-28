@@ -18,6 +18,8 @@ clean:
 client:
 	ocamlbuild -pkgs str,lwt,lwt.unix,ANSITerminal client_entry.byte && ./client_entry.byte
 
+gui:
+	ocamlbuild -pkgs lablgtk2 gui.byte && ./gui.byte
 
 
 # vim:ft=make
