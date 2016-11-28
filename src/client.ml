@@ -78,13 +78,13 @@ let handle_leave cur_topic=
   let f=function
         |x->
           match x.cmd with
-          |INFO-> Lwt_io.print ("INFO frame recvd")>>=
-          (fun ()->Lwt_io.print ("body of frame recvd: "^x.body))
+          |INFO-> Lwt_log.info ("INFO frame recvd")>>
+          Lwt_log.info ("body of frame recvd: "^x.body)
           (* TODO: print header to user*)
-          |_-> Lwt_io.print "expected INFO frame"
+          |_-> Lwt_log.info "expected INFO frame"
   in
-  send_frame unsubframe (!cur_connection).output>>=
-    (fun ()->(read_frame (!cur_connection).input >>=f))
+  send_frame unsubframe (!cur_connection).output>>
+  (read_frame (!cur_connection).input >>=f)
 
 let handle_quit =
   let _=print_endline "Quitting the application\n" in
@@ -97,14 +97,14 @@ let handle_change nroom cur_topic=
   let f=function
         |x->
           match x.cmd with
-          |INFO-> Lwt_io.print ("INFO frame recvd")>>=
-          (fun ()->Lwt_io.print ("body of frame recvd: "^x.body))
+          |INFO-> Lwt_io.print ("INFO frame recvd")>>
+          Lwt_io.print ("body of frame recvd: "^x.body)
           (* TODO: print header to user*)
           |_-> Lwt_io.print "expected INFO frame"
   in
-  send_frame unsubframe (!cur_connection).output >>=
-  (fun ()->(read_frame (!cur_connection).input >>=f))>>=
-  (fun ()->send_frame subframe (!cur_connection).output)
+  send_frame unsubframe (!cur_connection).output >>
+  (read_frame (!cur_connection).input >>=f)>>
+  send_frame subframe (!cur_connection).output
 
 
 let handle_join nroom=
@@ -158,8 +158,8 @@ let rec repl () =
     end
   | _->
     handle_message directive cur_topic
-  >>=
-  (fun ()-> Lwt_io.print "Sent a frame")
+  >>
+  Lwt_log.info "Sent a frame"
   >> repl ()
 
 (*
@@ -181,14 +181,14 @@ let main ipstring =
   let f=function
         |x->
           match x.cmd with
-          |CONNECTED-> Lwt_io.print ("CONNECTED frame recvd")>>=
-          (fun ()->Lwt_io.print ("body of frame recvd: "^x.body))
-          |_-> Lwt_io.print "expected CONNECTED frame"
+          |CONNECTED-> Lwt_log.info ("CONNECTED frame recvd")>>
+          Lwt_log.info ("body of frame recvd: "^x.body)
+          |_-> Lwt_log.info "expected CONNECTED frame"
   in
   let _ =
   (start_connection login pass chToServer
-    >>=(fun ()->(read_frame chFromServer >>=f)))
-  >>Lwt_io.print "printing something\n"
+    >>(read_frame chFromServer >>=f))
+  >>Lwt_log.info "printing something\n"
   >>repl ()
   in ()
   with
