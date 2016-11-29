@@ -7,4 +7,4 @@ let entry () =
   Client.main file_name
 
 
-let () = entry ()
+let _ = entry ()
