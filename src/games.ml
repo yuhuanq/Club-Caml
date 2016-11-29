@@ -10,8 +10,7 @@ Games module with submodules like module Tictactoe. *)
 
 open ANSITerminal
 
-(* game_state is the current state of the game. One of the attributes of
- * game_state should be whether it has ended. *)
+(* game_state is the current state of the game. *)
 type game_state =
 {
   mutable ended : bool;
@@ -54,7 +53,7 @@ let ended_or_not state =
 
 (* [update state move] takes in the current game state and the move that is
  * to be made, and updates game state. Returns unit *)
-let update state move =
+let update_on_move state move =
   match move with
   | O (x, y) ->
     if state.grid.(x).(y) = None
@@ -89,7 +88,7 @@ let one_box_to_string b color =
 
 (* [state_to_string state] takes in a game_state [state] and returns a string
  * representation of it for printing. *)
-let state_to_string state =
+let game_state_to_string state =
   let sz = Array.length state.grid in
   let buff = Buffer.create ((sz+1)*(sz+1)) in
   let color = ANSITerminal.on_white in
@@ -105,18 +104,17 @@ let state_to_string state =
  * For debugging. And for when client prints state maybe
  *)
 let print_state state =
-  state |> state_to_string |> print_string [Reset]
+  state |> game_state_to_string |> print_string [Reset]
 
-(* [update_state_and_to_string cmd state] updates state based on string
+(* [give_updated_game_state cmd state] updates state based on string
  * command cmd, where cmd is in the form x,y with any number of spaces.
- * Then it returns the string form of the state which is easy for printing.
- *)
-let update_state_and_to_string cmd state =
+ * Then it returns the state. *)
+let give_updated_game_state cmd state =
   let cmd' = Str.global_replace (Str.regexp_string " ") "" cmd in
   let (x,y) =
     (int_of_string (String.sub cmd' 0 1),
     int_of_string(String.sub cmd' 2 1)) in
   if state.turns - (state.turns / 2) * 2 = 1 (* mod *)
-    then (update state (O(x,y)); (state_to_string state))
+    then (update_on_move state (O(x,y)); state)
   else
-    (update state (X(x,y)); (state_to_string state))
+    (update_on_move state (X(x,y)); state)

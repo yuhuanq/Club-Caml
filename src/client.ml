@@ -6,9 +6,12 @@
  * Distributed under terms of the MIT license.
  *)
 
+(* Reminder: need to do code for when client receives a game_resp frame from server. *)
+
 open Unix
 open Lwt
 open Protocol
+open Games
 
 type connection = {
   input      : Lwt_io.input_channel;
@@ -87,7 +90,7 @@ let handle_leave cur_topic=
   (read_frame (!cur_connection).input >>=f)
 
 let handle_quit =
-  let _=print_endline "Quitting the application\n" in
+  let _ = print_endline "Quitting the application\n" in
   let disconframe=make_disconnect in
   send_frame disconframe (!cur_connection).output
 
@@ -118,15 +121,22 @@ let handle_message msg cur_topic=
   let msgframe= make_message cur_topic msgid sender msg in
   send_frame msgframe (!cur_connection).output
 
+let handle_game game_msg cur_topic =
+  let sender=(!cur_connection).username in
+  let gameframe = make_game cur_topic game_msg sender in
+  send_frame gameframe (!cur_connection).output
+
 (* TODO: handle incoming messages*)
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
    [#join nroom] joins a new room (requires not in any room currently)
-   [#game] plays a game
+   [#game game_msg] plays a game
    [#chatbot] changes to chatbot room
    [#quit] closes the connection to server
- Note: only change, leave, join, and quit implemented*)
+ Note: only change, leave, join, quit, game implemented
+ Note: for tictactoe, string game_msg is in the form:
+  opponent_name ^ " " ^ game_cmd *)
 
 let rec repl () =
   print_endline "in repl";
@@ -153,7 +163,11 @@ let rec repl () =
           |"#join"->
             let nroom=String.sub directive 6 ((String.length directive)-6) in
             handle_join nroom
-          |_-> failwith "Unimplemented"
+          |"#game" ->
+            let game_msg=String.sub directive 6 ((String.length directive)-6) in
+            handle_game game_msg cur_topic
+          | "#chatbot" -> failwith "Unimplemented"
+          | _ -> failwith "invalid # command"
           end
         end
     end

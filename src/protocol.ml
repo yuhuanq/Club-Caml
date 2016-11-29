@@ -21,6 +21,8 @@ type command = | SEND
                | RECEIPT
                | ERROR
                | INFO
+               | GAME
+               | GAME_RESP
 
 type frame = {
   cmd     : command;
@@ -43,6 +45,8 @@ let str_of_cmd = function
   | RECEIPT     -> "RECEIPT"
   | ERROR       -> "ERROR"
   | INFO        -> "INFO"
+  | GAME        -> "GAME"
+  | GAME_RESP   -> "GAME_RESP"
 
 let cmd_of_str = function
   | "SEND"        -> SEND
@@ -258,3 +262,16 @@ let make_info headers =
     headers = headers;
     body    = ""}
 
+let make_game dest game_cmd sender =
+  { cmd = GAME;
+    headers = ["destination", dest;
+               "sender", sender;
+               "content-length",string_of_int (String.length game_cmd)];
+    body = game_cmd }
+
+let make_game_resp dest game_str sender =
+  { cmd = GAME_RESP;
+    headers = ["destination", dest;
+               "sender", sender;
+               "content-length",string_of_int (String.length game_str)];
+    body = game_str }
