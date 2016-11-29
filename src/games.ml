@@ -27,7 +27,7 @@ type move_spec =
 
 (* [start_game] returns an initialized game state that is the starting point for
  * whichever game we’re playing (for now, tic tac toe) *)
-let start_game =
+let start_game () =
 {
   ended = false;
   turns = 0;

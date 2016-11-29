@@ -311,16 +311,16 @@ let execute_game_cmd game_cmd topic players =
     check length of game_data_set_filtered is 0 or 1. If not, bad code. *)
   let game_cmd = String.lowercase_ascii (String.trim game_cmd) in
   let updated_state = Games.give_updated_game_state game_cmd game_data.gstate in
-  Games.state_to_string updated_state
+  Games.game_state_to_string updated_state
   with Not_found ->
     (* Is designed so Not_found only happens when using GDSET.choose. *)
     let game_data = {
-      gstate = Games.start_game;
+      gstate = Games.start_game ();
       players = players
     } in
     let game_data_set' = GDSET.add game_data game_data_set in
     H.replace state.map_game_data topic game_data_set';
-    Games.state_to_string game_data.gstate
+    Games.game_state_to_string game_data.gstate
 
 (* [handle_game frame conn] handles a GAME frame sent from client. Based on
  * the game command, it updates the internal data structure game_data

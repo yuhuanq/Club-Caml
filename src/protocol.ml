@@ -63,6 +63,8 @@ let cmd_of_str = function
   | "MESSAGE"     -> MESSAGE
   | "RECEIPT"     -> RECEIPT
   | "ERROR"       -> ERROR
+  | "GAME"        -> GAME
+  | "GAME_RESP"   -> GAME_RESP
   | _             -> failwith "illegal cmd string"
 
 let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun () -> f)

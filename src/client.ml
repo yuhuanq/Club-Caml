@@ -2,7 +2,7 @@
  * client.ml
  * Copyright (C) 2016 sb892 <sb892@cornell.edu> Somrita Banerjee,
                       ew366 <ew366@cornell.edu> Eric Wang
-                      bl458 <bl458@cornell.edu> Byungchan Lim 
+                      bl458 <bl458@cornell.edu> Byungchan Lim
  *
  * Distributed under terms of the MIT license.
  *)
@@ -124,7 +124,7 @@ let handle_message msg cur_topic=
 
 let handle_game game_msg cur_topic =
   let sender=(!cur_connection).username in
-  let gameframe = make_game cur_topic game_msg sender in
+  let gameframe = Protocol.make_game cur_topic game_msg sender in
   send_frame gameframe (!cur_connection).output
 
 (* TODO: handle incoming messages*)
