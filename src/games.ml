@@ -1,6 +1,6 @@
 (*
  * games.ml
- * Copyright (C) 2016 yqiu <yqiu@f24-suntzu>
+ * Copyright (C) 2016 Byungchan Lim <bl458@cornell.edu>
  *
  * Distributed under terms of the MIT license.
  *)

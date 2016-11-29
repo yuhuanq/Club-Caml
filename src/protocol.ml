@@ -1,6 +1,7 @@
 (*
  * protocol.ml
  * Copyright (C) 2016 yqiu <yqiu@f24-suntzu>
+ *                    Byungchan Lim <bl458@cornell.edu>
  *
  * Distributed under terms of the MIT license.
 *)
