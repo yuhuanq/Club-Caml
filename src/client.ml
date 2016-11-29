@@ -185,17 +185,16 @@ let main ipstring =
           Lwt_log.info ("body of frame recvd: "^x.body)
           |_-> Lwt_log.info "expected CONNECTED frame"
   in
-  let _ =
   (start_connection login pass chToServer
     >>(read_frame chFromServer >>=f))
   >>Lwt_log.info "printing something\n"
   >>repl ()
-  in ()
   with
   | Failure _ ->
-          ANSITerminal.(print_string [red]
-            "\n\nError. Malformed IP Address.\n")
-  |_-> print_endline "Some other error"
+    let ()=ANSITerminal.(print_string [red]
+            "\n\nError. Malformed IP Address.\n") in
+    Lwt_log.info "Failed connection"
+  |_-> Lwt_log.info "Some other error"
 
 
 
