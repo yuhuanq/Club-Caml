@@ -96,12 +96,18 @@ let main () =
   let factory = new GMenu.factory view_menu ~accel_group in
   ignore(factory#add_item "Clear Chat" ~key:_R ~callback:(clearChat));
 
-  (*
+
   (* Button *)
-  let button = GButton.button ~label:"Push me!"
+  let sendButton = GButton.button
                               ~packing:vbox#add () in
-  ignore(button#connect#clicked ~callback: (fun () -> print_endline "Ouch!"));
-  *)
+  ignore(sendButton#connect#clicked
+    ~callback: (fun () -> print_endline "Ouch!"));
+
+  (*Add image to button*)
+  let _ = GMisc.image ~file:"images/send-button.svg"
+                              ~packing:sendButton#add () in
+
+
 
   (*Paned Window Widgets*)
   let masterPaned = GPack.paned `HORIZONTAL ~packing:vbox#add () in
@@ -144,7 +150,6 @@ let main () =
 
   (*start with focus on text entry box*)
   ignore(entry#misc#grab_focus ());
-
 
   (* Display the windows and enter Gtk+ main loop *)
   window#add_accel_group accel_group;
