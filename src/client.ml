@@ -49,10 +49,10 @@ let read_password_and_login ()=
 
   (log,pass)
 
-let start_connection login pass servchannel=
+let start_connection login pass servFromChannel servToChannel=
   let conframe=Protocol.make_connect login pass in
-  let newconn={input=Lwt_io.stdin;
-              output=servchannel;
+  let newconn={input=servFromChannel;
+              output=servToChannel;
               topic=None;
               username=login} in
   cur_connection:=newconn;
@@ -186,20 +186,13 @@ let main ipstring =
               return (print_endline "CONNECTED frame rec")
               (* Lwt_io.print ("CONNECTED frame recvd")>>= *)
           (* (fun ()->Lwt_io.print ("body of frame recvd: "^x.body)) *)
-          |_-> Lwt_io.print "expected CONNECTED frame" in
-  start_connection login pass oc >>=
+          |_-> return (print_endline "expected CONNECTED frame")
+  in
+  start_connection login pass ic oc >>=
   (fun () -> print_endline "before protocol read_frame in client";
   Protocol.read_frame ic)
   >>= f >> repl ()
 
-
-  (* let _ = *)
-  (* (start_connection login pass chToServer *)
-    (* >>=(fun ()->(read_frame chFromServer >>=f))) *)
-
-  (* >> Lwt_io.print "printing something\n" *)
-  (* >> repl () *)
-  (* in () *)
   with
   | Failure _ ->
           return (ANSITerminal.(print_string [red]

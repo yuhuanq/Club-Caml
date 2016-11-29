@@ -165,7 +165,7 @@ let handle_send_private frame conn =
  * [handle_send] handles a SEND frame. A SEND commands sends a message to a
  * destination in the system.
 *)
-(* val handle_subscribe : frame -> connection -> unit Lwt.t  *)
+(* val handle_send : frame -> connection -> unit Lwt.t  *)
 let handle_send frame conn =
   try_lwt
     let topic = Protocol.get_header frame "destination" in
@@ -187,6 +187,8 @@ let handle_send frame conn =
 (* val handle_subscribe : frame -> connection -> unit Lwt.t  *)
 let handle_subscribe frame conn =
   let topic = Protocol.get_header frame "destination" in
+  let _= (Lwt_log.info (conn.username ^ " trying to subscribe to " ^ topic) >>
+  return_unit) in
   let conn' = {conn with topic = Some topic} in
   try_lwt
     let conns = H.find state.map topic in
