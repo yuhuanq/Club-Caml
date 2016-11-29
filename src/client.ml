@@ -50,13 +50,13 @@ let read_password_and_login ()=
   (log,pass)
 
 let start_connection login pass servchannel=
-  let conframe=make_connect login pass in
+  let conframe=Protocol.make_connect login pass in
   let newconn={input=Lwt_io.stdin;
               output=servchannel;
               topic=None;
               username=login} in
   cur_connection:=newconn;
-  send_frame conframe newconn.output
+  Protocol.send_frame conframe newconn.output
 
 (*(* make server listen on 127.0.0.1:9000 *)
 let listen_address = Unix.inet_addr_loopback (* or Sys.argv.(1) *)
@@ -129,6 +129,7 @@ let handle_message msg cur_topic=
  Note: only change, leave, join, and quit implemented*)
 
 let rec repl () =
+  print_endline "in repl";
   let directive=read_line () in
   let cur_topic=option_to_str ((!cur_connection).topic) in
   let firstletter=directive.[0] in
@@ -175,27 +176,35 @@ let main ipstring =
   (*Do not need to bind, it is implicitly done - google this*)
   (*let () = Lwt_unix.bind sock (ADDR_INET (inet_addr_loopback,port)) in*)
   let _ = Lwt_unix.connect sock foreignSockAddr in
-  let chToServer= Lwt_io.of_fd Lwt_io.output sock in
-  let chFromServer= Lwt_io.of_fd Lwt_io.input sock in
+  let oc= Lwt_io.of_fd Lwt_io.Output sock in
+  let ic= Lwt_io.of_fd Lwt_io.Input sock in
   let (login,pass)=read_password_and_login () in
   let f=function
         |x->
           match x.cmd with
-          |CONNECTED-> Lwt_io.print ("CONNECTED frame recvd")>>=
-          (fun ()->Lwt_io.print ("body of frame recvd: "^x.body))
-          |_-> Lwt_io.print "expected CONNECTED frame"
-  in
-  let _ =
-  (start_connection login pass chToServer
-    >>=(fun ()->(read_frame chFromServer >>=f)))
-  >>Lwt_io.print "printing something\n"
-  >>repl ()
-  in ()
+          |CONNECTED->
+              return (print_endline "CONNECTED frame rec")
+              (* Lwt_io.print ("CONNECTED frame recvd")>>= *)
+          (* (fun ()->Lwt_io.print ("body of frame recvd: "^x.body)) *)
+          |_-> Lwt_io.print "expected CONNECTED frame" in
+  start_connection login pass oc >>=
+  (fun () -> print_endline "before protocol read_frame in client";
+  Protocol.read_frame ic)
+  >>= f >> repl ()
+
+
+  (* let _ = *)
+  (* (start_connection login pass chToServer *)
+    (* >>=(fun ()->(read_frame chFromServer >>=f))) *)
+
+  (* >> Lwt_io.print "printing something\n" *)
+  (* >> repl () *)
+  (* in () *)
   with
   | Failure _ ->
-          ANSITerminal.(print_string [red]
-            "\n\nError. Malformed IP Address.\n")
-  |_-> print_endline "Some other error"
+          return (ANSITerminal.(print_string [red]
+            "\n\nError. Malformed IP Address.\n"))
+  |_-> return (print_endline "Some other error")
 
 
 
