@@ -30,6 +30,19 @@ let chatBuffer = GText.buffer ~tag_table:tagTable
 (*the vertical scrollbar*)
 let adjustment = GData.adjustment ()
 
+(*---------------------Useful functions-----------------------*)
+(*[msgInsert identifier msg] inserts string message into the chat.
+ *Format of identifier string is "10:11 PM] <Eric Wang>" *)
+let msgInsert identifier msg =
+  chatBuffer#insert ~iter:chatBuffer#end_iter ~tags:[tag]
+                    identifier;
+  chatBuffer#insert ~iter:chatBuffer#end_iter (msg^("\n"));
+  adjustment#set_value (adjustment#upper)
+
+let clearChat () =
+  chatBuffer#delete (chatBuffer#get_iter `START) chatBuffer#end_iter
+
+
 
 (*-----------------MAIN LOOP-----------------*)
 let main () =
@@ -53,12 +66,6 @@ let main () =
       ~callback:(fun about ->aboutPopup#misc#hide ()));
     aboutPopup#show in
 
-  (* Menu bar *)
-  let menubar = GMenu.menu_bar ~packing:vbox#pack () in
-  let factory = new GMenu.factory menubar in
-  let accel_group = factory#accel_group in
-  let file_menu = factory#add_submenu "File" in
-
   (*IP Address add server dialog window - Event Handler*)
   let ipPrompt () =
     let ipAddrPrompt = GWindow.dialog ~title:"Enter IP Address of server"
@@ -71,11 +78,23 @@ let main () =
       ~callback: (fun () -> print_endline(ipEntry#text);ipAddrPrompt#destroy ()));
     ipAddrPrompt#show in
 
+  (* Menu bar *)
+  let menubar = GMenu.menu_bar ~packing:vbox#pack () in
+  let factory = new GMenu.factory menubar in
+  let accel_group = factory#accel_group in
+  let file_menu = factory#add_submenu "File" in
+  let view_menu = factory#add_submenu "View" in
+
+
   (* File menu *)
   let factory = new GMenu.factory file_menu ~accel_group in
   ignore(factory#add_item "Select Server" ~key:_I ~callback: (ipPrompt ()));
   ignore(factory#add_item "About" ~callback:(aboutDialog ()));
   ignore(factory#add_item "Quit" ~key:_Q ~callback: Main.quit);
+
+  (*View menu*)
+  let factory = new GMenu.factory view_menu ~accel_group in
+  ignore(factory#add_item "Clear Chat" ~key:_R ~callback:(clearChat));
 
   (*
   (* Button *)
@@ -131,16 +150,6 @@ let main () =
   window#add_accel_group accel_group;
   window#show ();
   Main.main ()
-
-
-(*[msgInsert identifier msg] inserts string message into the chat.
- *Format of identifier string is "10:11 PM] <Eric Wang>" *)
-let msgInsert identifier msg =
-  chatBuffer#insert ~iter:chatBuffer#end_iter ~tags:[tag]
-                    identifier;
-  chatBuffer#insert ~iter:chatBuffer#end_iter (msg^("\n"));
-  adjustment#set_value (adjustment#upper)
-
 
 
 let () = main ()
