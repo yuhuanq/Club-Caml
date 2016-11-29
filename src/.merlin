@@ -6,3 +6,5 @@ PKG lwt.syntax
 PKG oUnit
 PKG ANSITerminal
 PKG sqlite3
+S .
+B _build

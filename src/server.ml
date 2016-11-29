@@ -1,7 +1,7 @@
 (*
  * server.ml
  * Copyright (C) 2016 yqiu <yqiu@f24-suntzu>
- *                    Byungchan Lim <bl458@cornell.edu>  
+ *                    Byungchan Lim <bl458@cornell.edu>
  *
  * Distributed under terms of the MIT license.
 *)
@@ -341,7 +341,7 @@ let handle_game frame conn =
   let send_fun connelt =
     ignore_result (Protocol.send_frame game_resp_frame connelt.output) in
   CSET.iter send_fun conns;
-  Lwt_log.info ("sent a GAME frame to destination: " ^ topic) >>
+  Lwt_log.info ("sent a GAME_RESP frame to destination: " ^ topic) >>
   return_unit
 
 (* [flush_map_message map_message] flushes chat history stored in map_message to

@@ -1,3 +1,11 @@
+(*
+ * database.ml
+ * Copyright (C) 2016 Byungchan Lim <bl458@cornell.edu>
+ *
+ *
+ * Distributed under terms of the MIT license.
+*)
+
 open Sqlite3
 
 exception DB_exn of string
