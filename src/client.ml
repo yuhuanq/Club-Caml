@@ -122,7 +122,7 @@ let handle_message msg cur_topic=
   let msgframe= make_message cur_topic msgid sender msg in
   send_frame msgframe (!cur_connection).output
 
-let handle_game game_msg cur_topic =
+let handle_game_client_side game_msg cur_topic =
   let sender=(!cur_connection).username in
   let gameframe = Protocol.make_game cur_topic game_msg sender in
   send_frame gameframe (!cur_connection).output
@@ -166,7 +166,7 @@ let rec repl () =
             handle_join nroom
           |"#game" ->
             let game_msg=String.sub directive 6 ((String.length directive)-6) in
-            handle_game game_msg cur_topic
+            handle_game_client_side game_msg cur_topic
           | "#chatbot" -> failwith "Unimplemented"
           | _ -> failwith "invalid # command"
           end

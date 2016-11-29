@@ -83,7 +83,7 @@ type state = {
   mutable user_map : (string,connection) H.t;
   mutable map : (string,CSET.t) H.t;
   mutable map_msg : (string, MSET.t) H.t;
-  mutable map_game_data : (string, GDSET.t) H.t;
+  mutable map_game_data : (string, GDSET.t) H.t
 }
 
 let persist_topics =
@@ -254,7 +254,7 @@ let handle_unsubscribe frame conn =
       ignore_result (Lwt_log.info ("unsubscribed " ^ conn.username ^ " from " ^
                                    topic));
       let left_message = Protocol.make_message topic "BROKER" (string_of_float
-                                                                 (Unix.gettimeofday ())) (conn.username ^ " has left the room.") in
+        (Unix.gettimeofday ())) (conn.username ^ " has left the room.") in
       let send_fun conn = ignore_result (Protocol.send_frame left_message
                                            conn.output) in
       CSET.iter send_fun conns';
@@ -306,7 +306,7 @@ let execute_game_cmd game_cmd topic players =
     if gd.players = players
       then true
     else false) game_data_set in
-  try_lwt
+  try
   let game_data = GDSET.choose game_data_set_filtered in (* When debugging,
     check length of game_data_set_filtered is 0 or 1. If not, bad code. *)
   let game_cmd = String.lowercase_ascii (String.trim game_cmd) in
@@ -322,11 +322,12 @@ let execute_game_cmd game_cmd topic players =
     H.replace state.map_game_data topic game_data_set';
     Games.game_state_to_string game_data.gstate
 
-(* [handle_game frame conn] handles a GAME frame sent from client. Based on
- * the game command, it updates the internal data structure game_data
- * and if successful, sends a game_resp frame to the destination/chat room.
+(* [handle_game_server frame conn] makes server handle a GAME frame sent from
+ * client. Based on the game command, it updates the internal data structure
+ * game_data and if successful, sends a game_resp frame to the
+ * destination/chat room.
  * (Similar to how playing chess on FB chat works) *)
-let handle_game frame conn =
+let handle_game_server_side frame conn =
   let topic = Protocol.get_header frame "destination" in
   let sender = Protocol.get_header frame "sender" in
   let game_msg = frame.body in
@@ -366,7 +367,7 @@ let handle_frame frame conn =
   | DISCONNECT -> let _=print_endline "Received a disconnect frame" in
                   handle_disconnect frame conn
   | GAME -> let _=print_endline "Received a game frame" in
-            handle_game frame conn
+            handle_game_server_side frame conn
   | _ -> failwith "invalid client frame"
 
 let rec handle_connection conn () =
