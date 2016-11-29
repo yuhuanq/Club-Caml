@@ -6,6 +6,11 @@
  * Distributed under terms of the MIT license.
 *)
 
+(* Reminder:
+1. Do I need to implement execute_game_cmd function with try_lwt and
+lwt operations? Or is just a simple try fine?
+2. Need to finish implementing flushing in server *)
+
 open Lwt
 open Protocol
 open Games

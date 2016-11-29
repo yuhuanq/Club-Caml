@@ -7,7 +7,10 @@
  * Distributed under terms of the MIT license.
  *)
 
-(* Reminder: need to do code for when client receives a game_resp frame from server. *)
+(* Reminder:
+1. need to do code for when client receives a game_resp frame from server.
+2. client.mli??
+3. database frame to send to server to request data. In this case, chat history*)
 
 open Unix
 open Lwt
