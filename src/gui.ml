@@ -23,7 +23,8 @@ let main () =
 
   (*About Dialog*)
   let aboutDialog () =
-    let authors = ["Yuhuan Qiu";"Eric Wang";"Somrita Banerjee";"Byungchan Lim"] in
+    let authors = ["Yuhuan Qiu";"Eric Wang";"Somrita Banerjee";"Byungchan Lim"]
+    in
     let license = "Distributed under terms of the MIT license." in
     let version = "Alpha 0.1" in
     let copyright = "2016" in
@@ -31,7 +32,8 @@ let main () =
                         ~version:version ~copyright:copyright
                         ~name:"Club Caml" ()
     in
-    (*aboutPopup#connect#(aboutPopup.close response) ~callback:( ->aboutPopup#misc#hide);*)
+    ignore(aboutPopup#connect#response
+      ~callback:(fun about ->aboutPopup#misc#hide ()));
     aboutPopup#show in
 
   (* Menu bar *)
@@ -39,7 +41,6 @@ let main () =
   let factory = new GMenu.factory menubar in
   let accel_group = factory#accel_group in
   let file_menu = factory#add_submenu "File" in
-  let _ = factory#add_item "About" ~callback:(aboutDialog ()) in
 
   (*IP Address add server dialog window - Event Handler*)
   let ipPrompt () =
@@ -56,6 +57,7 @@ let main () =
   (* File menu *)
   let factory = new GMenu.factory file_menu ~accel_group in
   ignore(factory#add_item "Select Server" ~key:_I ~callback: (ipPrompt ()));
+  ignore(factory#add_item "About" ~callback:(aboutDialog ()));
   ignore(factory#add_item "Quit" ~key:_Q ~callback: Main.quit);
 
   (*
@@ -89,6 +91,7 @@ let main () =
   let usrs = new GTree.column_list in
   let usrColumn = usrs#add Gobject.Data.string in
   let rightPaneUsrList = GTree.view ~model: *)
+
 
   (*User text entry widget*)
   let enter_cb entry () =
