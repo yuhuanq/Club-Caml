@@ -3,23 +3,40 @@
  * Copyright (C) 2016 ew366 <ew366@cornell.edu> Eric Wang
  * Distributed under terms of the MIT license.
  *)
-(*GUI based on https://ocaml.org/
- *learn/tutorials/introduction_to_gtk.html#Gtktutorial
+(*GUI foundation based on https://ocaml.org/
+ *learn/tutorials/introduction_to_gtk.html#Gtktutorial and
  *https://github.com/klartext/lablgtk2-ocaml-Tutorial*)
 
 open GMain
 open GdkKeysyms
 
-(*ocamlbuild -pkgs lablgtk2 gui.byte*)
 
 let locale = GtkMain.Main.init ()
 
+
+(*--------------GTK objects used by other functions & main--------------*)
+let tag =
+  let temp = GText.tag ~name:"msg_id_tag"() in
+  temp#set_property (`WEIGHT (`BOLD));temp
+
+let castedTag = tag#as_tag
+
+let tagTable =
+  let initTagTable = GText.tag_table () in
+  initTagTable#add castedTag;initTagTable
+
+let chatBuffer = GText.buffer ~tag_table:tagTable
+                              ~text:"Welcome to Club Caml!\n" ()
+(*the vertical scrollbar*)
+let adjustment = GData.adjustment ()
+
+
+(*-----------------MAIN LOOP-----------------*)
 let main () =
-  let window = GWindow.window ~width:960 ~height:720
+  let window = GWindow.window ~width:960 ~height:720 ~resizable:false
                               ~title:"Club Caml" () in
   let vbox = GPack.vbox ~packing:window#add () in
   ignore(window#connect#destroy ~callback:Main.quit);
-
 
   (*About Dialog*)
   let aboutDialog () =
@@ -73,14 +90,12 @@ let main () =
   ignore(leftPaned#set_position (600));
 
   (*Chat box widget*)
-  let adjustment = GData.adjustment () in
   let scrolledWindow = GBin.scrolled_window ~vadjustment:adjustment
                                             ~packing:leftPaned#add () in
 
   let chatView = GText.view ~wrap_mode:`WORD ~editable:false
+                            ~cursor_visible:false
                             ~packing:scrolledWindow#add () in
-
-  let chatBuffer = GText.buffer ~text:"Welcome to Club Caml!\n" () in
 
   ignore(chatView#set_buffer chatBuffer);
 
@@ -98,14 +113,15 @@ let main () =
     let text = entry#text in
 
     print_endline (text^("\n"));
-    chatBuffer#insert (text^("\n"));
-    adjustment#set_value (adjustment#upper);
-    entry#set_text "" in
+    chatBuffer#insert ~iter:chatBuffer#end_iter ~tags:[tag]
+                      "[10:32 PM] <Eric Wang> ";
+    chatBuffer#insert ~iter:chatBuffer#end_iter (text^("\n"));
+    adjustment#set_value (adjustment#upper); (*keep scrollbar at newest messages*)
+    entry#set_text "" (*clear user text entry*)
+    in
 
   let entry = GEdit.entry ~max_length:500 ~packing:leftPaned#add () in
   ignore(entry#connect#activate ~callback:(enter_cb entry));
-
-
 
   (*start with focus on text entry box*)
   ignore(entry#misc#grab_focus ());
@@ -115,5 +131,16 @@ let main () =
   window#add_accel_group accel_group;
   window#show ();
   Main.main ()
+
+
+(*[msgInsert identifier msg] inserts string message into the chat.
+ *Format of identifier string is "10:11 PM] <Eric Wang>" *)
+let msgInsert identifier msg =
+  chatBuffer#insert ~iter:chatBuffer#end_iter ~tags:[tag]
+                    identifier;
+  chatBuffer#insert ~iter:chatBuffer#end_iter (msg^("\n"));
+  adjustment#set_value (adjustment#upper)
+
+
 
 let () = main ()
