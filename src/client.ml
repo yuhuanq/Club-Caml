@@ -58,12 +58,6 @@ let start_connection login pass servFromChannel servToChannel=
   cur_connection:=newconn;
   Protocol.send_frame conframe newconn.output
 
-(*(* make server listen on 127.0.0.1:9000 *)
-let listen_address = Unix.inet_addr_loopback (* or Sys.argv.(1) *)
-let port = 9000 (* or Sys.argv.(2) *)
-*)
-
-(*let ipstring="162.243.63.41"*)
 let port=9000
 (* we're using the same port on the host machine and on the server*)
 let backlog = 10
@@ -179,25 +173,20 @@ let main ipstring =
   let oc= Lwt_io.of_fd Lwt_io.Output sock in
   let ic= Lwt_io.of_fd Lwt_io.Input sock in
   let (login,pass)=read_password_and_login () in
-  let f=function
-        |x->
+  let f=fun x->
           match x.cmd with
-          |CONNECTED->
+          | CONNECTED->
               return (print_endline "CONNECTED frame rec")
               (* Lwt_io.print ("CONNECTED frame recvd")>>= *)
           (* (fun ()->Lwt_io.print ("body of frame recvd: "^x.body)) *)
-          |_-> return (print_endline "expected CONNECTED frame")
+          | _-> return (print_endline "expected CONNECTED frame")
   in
   start_connection login pass ic oc >>=
   (fun () -> print_endline "before protocol read_frame in client";
-  Protocol.read_frame ic)
-  >>= f >> repl ()
-
+  Protocol.read_frame ic
+  >>= f) >> repl ()
   with
   | Failure _ ->
           return (ANSITerminal.(print_string [red]
             "\n\nError. Malformed IP Address.\n"))
   |_-> return (print_endline "Some other error")
-
-
-
