@@ -4,6 +4,11 @@
  *
  * Distributed under terms of the MIT license.
 *)
+(*
+ * TODO:
+ *   define some destination or frame for purpose of client pulling info from the
+ *   server
+ *)
 
 open Lwt
 open Protocol
@@ -111,15 +116,12 @@ let backlog = 10 (* max num of connections? not working *)
 (* enable logging up to the INFO level *)
 let () = Lwt_log.add_rule "*" Lwt_log.Info
 
-(* [get_usernames conns_set] is a string list of the usernames of a connections
- * set*)
+(* [get_usernames conns_set] is a string list of the usernames of a CONNSET *)
 let get_usernames conns_set =
   CSET.fold (fun elt acc -> elt.username::acc) conns_set []
 
-(*
- * [get_users_subbed topic] is a string list of the current usernames subbed to a
- * [topic]
-*)
+(* [get_users_subbed topic] is a string list of the current usernames subbed to
+ * a [topic] *)
 let get_users_subbed topic =
   let conns' = H.find state.map topic in get_usernames conns'
 
@@ -128,12 +130,10 @@ let gather_info () =
   H.fold (fun k v acc -> (k,string_of_int (List.length (CSET.elements v)))::acc)
     state.map []
 
-
 (* [newi] is a unique int *)
 let newi =
   let r = ref 0 in
   (fun () -> r:=!r + 1; !r)
-
 
 let handle_send_topic frame conn =
   let topic = Protocol.get_header frame "destination" in
@@ -172,8 +172,8 @@ let handle_send frame conn =
     if Str.string_match topic_re topic 0 then handle_send_topic frame conn
     else if Str.string_match private_re topic 0 then handle_send_private frame
     conn
-    else failwith "Invalid send destination"
-  with Not_found | _ ->
+    else raise Not_found
+  with Not_found ->
     let err = make_error "" "Invalid destination header" in
     Protocol.send_frame err conn.output >> return_unit
 
@@ -385,7 +385,7 @@ let accept_connection (fd, sckaddr) =
 let create_socket () =
   let open Lwt_unix in
   let sock = socket PF_INET SOCK_STREAM 0 in
-  bind sock @@ ADDR_INET(listen_address, port);
+  bind sock (ADDR_INET(listen_address,port));
   listen sock backlog;
   sock
 
