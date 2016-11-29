@@ -2,4 +2,6 @@
 #load "str.cma";;
 #load "protocol.cmo";;
 #require "lwt";;
+#require "lwt.syntax";;
+#require "ANSITerminal";;
 open Lwt;;

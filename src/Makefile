@@ -13,7 +13,10 @@ all:
 test:
 	# ocamlbuild use-ocamlfind -pkgs str,lwt,lwt.unix,oUnit test_protocol.byte && ./test_protocol.byte
 	# doesn't work atm without runner sequential..............
-	ocamlbuild -pkgs lwt,lwt.unix,oUnit,str test_protocol.byte && ./test_protocol.byte -runner sequential
+	ocamlbuild -pkgs lwt,lwt.syntax,lwt.unix,oUnit,str test_protocol.byte && ./test_protocol.byte -runner sequential
+
+indent: *.ml
+	for mlfile in $^; do ocp-indent -i --syntax lwt $$mlfile; done
 
 clean:
 	ocamlbuild -clean
