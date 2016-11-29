@@ -72,10 +72,15 @@ let main () =
                                       ~width:400 ~height:100 () in
     let ipEntry = GEdit.entry ~max_length:50
                               ~packing:ipAddrPrompt#vbox#add () in
+    let cancelButton = GButton.button ~label:"Cancel"
+                                    ~packing:ipAddrPrompt#action_area#add () in
     let okButton = GButton.button ~label:"Connect"
                                   ~packing:ipAddrPrompt#action_area#add () in
+    ignore(cancelButton#connect#clicked
+      ~callback:(fun () -> ipAddrPrompt#misc#hide ()));
     ignore(okButton#connect#clicked
-      ~callback: (fun () -> print_endline(ipEntry#text);ipAddrPrompt#destroy ()));
+      ~callback:
+       (fun () -> print_endline(ipEntry#text);ipAddrPrompt#misc#hide ()));
     ipAddrPrompt#show in
 
   (* Menu bar *)
@@ -96,23 +101,10 @@ let main () =
   let factory = new GMenu.factory view_menu ~accel_group in
   ignore(factory#add_item "Clear Chat" ~key:_R ~callback:(clearChat));
 
-
-  (* Button *)
-  let sendButton = GButton.button
-                              ~packing:vbox#add () in
-  ignore(sendButton#connect#clicked
-    ~callback: (fun () -> print_endline "Ouch!"));
-
-  (*Add image to button*)
-  let _ = GMisc.image ~file:"images/send-button.svg"
-                              ~packing:sendButton#add () in
-
-
-
   (*Paned Window Widgets*)
   let masterPaned = GPack.paned `HORIZONTAL ~packing:vbox#add () in
   let leftPaned = GPack.paned `VERTICAL ~packing:masterPaned#add () in
-  ignore(leftPaned#set_position (600));
+  ignore(leftPaned#set_position (620));
 
   (*Chat box widget*)
   let scrolledWindow = GBin.scrolled_window ~vadjustment:adjustment
@@ -132,6 +124,7 @@ let main () =
   let usrColumn = usrs#add Gobject.Data.string in
   let rightPaneUsrList = GTree.view ~model: *)
 
+  let entryBox = GPack.hbox ~packing:leftPaned#add () in
 
   (*User text entry widget*)
   let enter_cb entry () =
@@ -143,11 +136,20 @@ let main () =
     chatBuffer#insert ~iter:chatBuffer#end_iter (text^("\n"));
     adjustment#set_value (adjustment#upper); (*keep scrollbar at newest messages*)
     entry#set_text "" (*clear user text entry*)
-    in
+  in
 
-  let entry = GEdit.entry ~max_length:500 ~packing:leftPaned#add () in
+  let entry = GEdit.entry ~max_length:500 ~packing:entryBox#add () in
   ignore(entry#connect#activate ~callback:(enter_cb entry));
 
+  (* Button *)
+  let sendButton = GButton.button ~relief:`NONE
+                              ~packing:entryBox#add () in
+  ignore(sendButton#connect#clicked
+    ~callback: (fun () -> print_endline "Ouch!"));
+
+  (*Add send image to button*)
+  let _ = GMisc.image ~file:"images/send-button_small.png"
+                              ~packing:sendButton#add () in
   (*start with focus on text entry box*)
   ignore(entry#misc#grab_focus ());
 
