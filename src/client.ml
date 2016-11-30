@@ -77,13 +77,13 @@ let handle_leave cur_topic=
           (* TODO: print header to user*)
           |_-> Lwt_log.info "expected INFO frame"
   in
-  send_frame unsubframe (!cur_connection).output>>
-  (read_frame (!cur_connection).input >>=f)
+  Protocol.send_frame unsubframe (!cur_connection).output >>
+  (read_frame (!cur_connection).input >>= f)
 
-let handle_quit =
-  let _=print_endline "Quitting the application\n" in
+let handle_quit () =
+  print_endline "Quitting the application\n";
   let disconframe=make_disconnect in
-  send_frame disconframe (!cur_connection).output
+  Protocol.send_frame disconframe (!cur_connection).output
 
 let handle_change nroom cur_topic=
   let unsubframe=make_unsubscribe cur_topic in
@@ -102,7 +102,7 @@ let handle_change nroom cur_topic=
 
 
 let handle_join nroom=
-  let _=print_endline ("Attempting to join room "^nroom^"\n") in
+  print_endline ("Attempting to join room "^nroom^"\n");
   let subframe=make_subscribe nroom in
   send_frame subframe (!cur_connection).output
 
@@ -132,7 +132,9 @@ let rec repl () =
     begin
     match directive with
     |"#leave"-> handle_leave cur_topic
-    |"#quit"-> handle_quit
+    |"#quit"->
+        print_endline "matched #quit";
+        handle_quit () >> repl ()
     |_->
         let partOfDir=String.sub directive 0 7 in
         begin
@@ -146,7 +148,8 @@ let rec repl () =
           match partOfDir2 with
           |"#join"->
             let nroom=String.sub directive 6 ((String.length directive)-6) in
-            handle_join nroom
+            print_endline ("joining " ^ nroom);
+            handle_join nroom >> repl ()
           |_-> failwith "Unimplemented"
           end
         end
@@ -191,3 +194,4 @@ let main ipstring =
             "\n\nError. Malformed IP Address.\n"))
   |_-> return (print_endline "Some other error")
 
+let _ = main "127.0.0.1"

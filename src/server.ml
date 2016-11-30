@@ -12,7 +12,7 @@ let (>>|) = (>|=)
 
 (* Anonymous bind:
  * syntactic sugar from Lwt.syntax but Merlin doesn't recognize..so manually *)
-let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun () -> f)
+let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun _ -> f)
 
 type connection = {
   input      : Lwt_io.input_channel;
@@ -194,7 +194,7 @@ let handle_subscribe frame conn =
     let conns = H.find state.map topic in
     let conns' = CSET.add conn' conns in
     H.replace state.map topic conns';
-    let _=print_endline (conn.username ^ " subscribed to " ^ topic) in
+    print_endline (conn.username ^ " subscribed to " ^ topic);
     Lwt_log.info (conn.username ^ " subscribed to " ^ topic) >>
     return_unit
   with Not_found ->
@@ -260,8 +260,9 @@ let handle_unsubscribe frame conn =
 (* [handle_disconnect] does a graceful disconnect for a client from the server *)
 (* val handle_subscribe : frame -> connection -> unit  *)
 let handle_disconnect frame conn =
-  Lwt_io.abort conn.output >>=
-  (fun _ ->
+  (* TODO: fix *)
+  Lwt_log.info "handling disconnect" >>= fun _ ->
+  Lwt_io.abort conn.output >>= fun _ ->
      (* remove from  connections *)
      state.connections <- CSET.remove conn state.connections;
      H.remove state.user_map conn.username;
@@ -272,7 +273,6 @@ let handle_disconnect frame conn =
      H.iter f state.map;
      Lwt_log.info ("disconnected " ^ conn.username) >>
      return ()
-  )
 
 (* [flush_map_message map_message] flushes chat history stored in map_message to
  * the database if the size of the chat history exceeds the limit. It's incomplete
@@ -286,20 +286,37 @@ let handle_disconnect frame conn =
    return () *)
 
 let handle_frame frame conn =
+  print_endline "in handle frame";
   match frame.cmd with
   | SEND -> let _=print_endline "Received a send frame" in
             handle_send frame conn
-  | SUBSCRIBE -> let _=print_endline "Received a subscribe frame" in
+  | SUBSCRIBE ->
+                 (* print_endline "Received a subscribe frame"; *)
+                 Lwt_log.info "Received an subscribe frame" >>= fun _ ->
                  handle_subscribe frame conn
-  | UNSUBSCRIBE -> let _=print_endline "Received an unsubscribe frame" in
-                   handle_unsubscribe frame conn
-  | DISCONNECT -> let _=print_endline "Received a disconnect frame" in
+  | UNSUBSCRIBE ->
+                  (* let _=print_endline "Received an unsubscribe frame" in *)
+                  Lwt_log.info "Received an Unsub farme" >>= fun _ ->
+                  handle_unsubscribe frame conn
+  | DISCONNECT -> Lwt_log.info "disconnecting a client" >>= fun _ ->
                   handle_disconnect frame conn
   | _ -> failwith "invalid client frame"
 
-let rec handle_connection conn () =
-  lwt frame = Protocol.read_frame conn.input in
-  handle_frame frame conn >> handle_connection conn ()
+let handle_connection conn () =
+  let rec loop () =
+    lwt frame = Protocol.read_frame conn.input in
+    handle_frame frame conn >>
+    loop ()
+  in
+    loop ()
+
+(*
+ * let rec handle_connection conn () =
+ *   Lwt_log.info "in handle connection" >>= fun _ ->
+ *   Protocol.read_frame conn.input >>= fun frame ->
+ *   handle_frame frame conn >> handle_connection conn ()
+ *)
+
 (* Protocol.read_frame conn.input >>= *)
 (* (fun frame -> *)
 (* handle_frame frame conn >>= (fun () -> handle_connection conn ())) *)
@@ -336,12 +353,12 @@ let close_connection conn =
  * client-server. Try to read a CONNECT frame in, if so => send CONNECTED and
  * return a connection record, else send an ERROR frame
 *)
-let establish_connection ic oc client_id=
+let establish_connection ic oc client_id =
   let f fr =
     let _=print_endline "Received some frame" in
     match fr.cmd with
     | CONNECT ->
-      let _=print_endline ("New connection from " ^ client_id) in
+      print_endline ("New connection from " ^ client_id);
       begin
         (* let reply = make_connected (string_of_int (newi ()) ) in *)
         let reply = {
@@ -354,15 +371,19 @@ let establish_connection ic oc client_id=
           let reply = make_error "" "Username already taken" in
           Protocol.send_frame reply oc >> Lwt_io.abort ic
         else
+          Lwt_log.info ("user " ^ username ^ " has logged in.") >>= fun _ ->
           let conn = {input = ic; topic = None; output = oc; username = username} in
           state.connections <- CSET.add conn state.connections;
           H.add state.user_map conn.username conn;
           (* let _ = Protocol.send_frame reply oc in *)
           try_lwt
             Protocol.send_frame reply oc >>=
-            ( fun () -> Lwt.on_failure (handle_connection conn ()) (fun e -> Lwt_log.ign_error
-                                                                               (Printexc.to_string e));
-              Lwt_log.info ("New connection from " ^ client_id) >>= return )
+              fun () ->
+                Lwt_log.info ("New connection from " ^
+                client_id) >>= fun _ ->
+                Lwt.on_failure (handle_connection conn ())
+                (fun e -> Lwt_log.ign_error (Printexc.to_string e));
+                return_unit
           with
           | _ ->
             close_connection conn
