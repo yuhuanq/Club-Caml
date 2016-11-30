@@ -134,7 +134,7 @@ let rec repl () =
     |"#leave"-> handle_leave cur_topic
     |"#quit"->
         print_endline "matched #quit";
-        handle_quit () >> repl ()
+        handle_quit ()
     |_->
         let partOfDir=String.sub directive 0 7 in
         begin
