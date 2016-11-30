@@ -8,6 +8,12 @@ all:
 	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_server.native
 	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o client.native
 
+server:
+	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_server.native
+
+client:
+	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o client.native
+
 test:
 	# ocamlbuild use-ocamlfind -pkgs str,lwt,lwt.unix,oUnit test_protocol.byte && ./test_protocol.byte
 	# doesn't work atm without runner sequential..............
@@ -18,11 +24,6 @@ indent: *.ml
 
 clean:
 	ocamlbuild -clean
-
-client:
-	ocamlbuild -pkgs str,lwt,lwt.unix,ANSITerminal client_entry.byte && ./client_entry.byte
-
-
 
 # vim:ft=make
 #
