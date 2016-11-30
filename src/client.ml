@@ -190,3 +190,4 @@ let main ipstring =
           return (ANSITerminal.(print_string [red]
             "\n\nError. Malformed IP Address.\n"))
   |_-> return (print_endline "Some other error")
+

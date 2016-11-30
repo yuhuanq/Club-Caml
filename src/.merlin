@@ -3,5 +3,6 @@ PKG oUnit
 PKG lwt.unix
 PKG ANSITerminal
 PKG lwt.syntax
-S .
-B _build
+PKG oUnit
+PKG ANSITerminal
+PKG sqlite3
