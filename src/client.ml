@@ -199,5 +199,4 @@ let main ipstring =
    *)
 
 let () = Lwt_log.add_rule "*" Lwt_log.Info
-let () = Lwt_unix.run (main "127.0.0.1")
 

@@ -6,13 +6,13 @@
 
 all:
 	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_server.native
-	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o client.native
+	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_client.native
 
 server:
 	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_server.native
 
 client:
-	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o client.native
+	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_client.native
 
 test:
 	# ocamlbuild use-ocamlfind -pkgs str,lwt,lwt.unix,oUnit test_protocol.byte && ./test_protocol.byte
