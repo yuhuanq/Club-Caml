@@ -12,7 +12,7 @@ let (>>|) = (>|=)
 
 (* Anonymous bind:
  * syntactic sugar from Lwt.syntax but Merlin doesn't recognize..so manually *)
-let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun _ -> f)
+let (>>) (dt : unit Lwt.t) f = dt >>= (fun () -> f)
 
 type connection = {
   input      : Lwt_io.input_channel;
@@ -261,7 +261,7 @@ let handle_unsubscribe frame conn =
 (* val handle_subscribe : frame -> connection -> unit  *)
 let handle_disconnect frame conn =
   (* TODO: fix *)
-  Lwt_log.info "handling disconnect" >>= fun _ ->
+  Lwt_log.info ("Disconnecting user: " ^ conn.username) >>
   Lwt_io.abort conn.output >>= fun _ ->
      (* remove from  connections *)
      state.connections <- CSET.remove conn state.connections;
@@ -271,8 +271,8 @@ let handle_disconnect frame conn =
        let conns' = CSET.remove conn v in
        H.replace state.map k conns' in
      H.iter f state.map;
-     Lwt_log.info ("disconnected " ^ conn.username) >>
-     return ()
+     (* terminate the thread now with exn *)
+     fail End_of_file
 
 (* [flush_map_message map_message] flushes chat history stored in map_message to
  * the database if the size of the chat history exceeds the limit. It's incomplete
