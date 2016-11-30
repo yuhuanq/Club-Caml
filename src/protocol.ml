@@ -60,7 +60,7 @@ let cmd_of_str = function
   | "ERROR"       -> ERROR
   | _             -> failwith "illegal cmd string"
 
-let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun () -> f)
+let (>>) (dt : unit Lwt.t) f = dt >>= (fun _ -> f)
 
 (*
  * [frame_of_buf buf] is a frame record. Given a string [buf] in STOMP format
@@ -190,7 +190,7 @@ let read_frame ic =
          let read_len = List.assoc "content-length" lst in
          let read_len = int_of_string read_len in
          let bytebuf = Bytes.create read_len in
-         let _ = Lwt_io.read_into_exactly ic bytebuf read_len 0 in
+         Lwt_io.read_into_exactly ic bytebuf read_len 0 >>
          return {cmd = cmd_of_str c; headers = lst ; body = bytebuf }
        with Not_found ->
           (*
