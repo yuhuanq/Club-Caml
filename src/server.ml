@@ -442,4 +442,3 @@ let run_server () =
   let serve = create_server () in
   Lwt_main.run @@ serve ()
 
-let ()=run_server ()
