@@ -48,6 +48,10 @@ let clearChat () =
 let main () =
   let window = GWindow.window ~width:960 ~height:720 ~resizable:false
                               ~title:"Club Caml" () in
+
+  let icon = GdkPixbuf.from_file "images/icon.png"  in
+  window#set_icon (Some icon);
+
   let vbox = GPack.vbox ~packing:window#add () in
   ignore(window#connect#destroy ~callback:Main.quit);
 
@@ -104,7 +108,7 @@ let main () =
   (*Paned Window Widgets*)
   let masterPaned = GPack.paned `HORIZONTAL ~packing:vbox#add () in
   let leftPaned = GPack.paned `VERTICAL ~packing:masterPaned#add () in
-  ignore(leftPaned#set_position (620));
+  ignore(leftPaned#set_position (642));
 
   (*Chat box widget*)
   let scrolledWindow = GBin.scrolled_window ~vadjustment:adjustment
@@ -140,15 +144,17 @@ let main () =
 
   let entry = GEdit.entry ~max_length:500 ~packing:entryBox#add () in
   ignore(entry#connect#activate ~callback:(enter_cb entry));
+  entry#misc#set_size_request ~width:900 ~height:40 () ; (*make button width small*)
+
 
   (* Button *)
   let sendButton = GButton.button ~relief:`NONE
                               ~packing:entryBox#add () in
   ignore(sendButton#connect#clicked
-    ~callback: (fun () -> print_endline "Ouch!"));
+    ~callback: (fun () -> (enter_cb entry ())));
 
   (*Add send image to button*)
-  let _ = GMisc.image ~file:"images/send-button_small.png"
+  let _ = GMisc.image ~file:"images/send-button_tiny.png"
                               ~packing:sendButton#add () in
   (*start with focus on text entry box*)
   ignore(entry#misc#grab_focus ());
