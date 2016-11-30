@@ -15,6 +15,24 @@ let locale = GtkMain.Main.init ()
 
 
 (*--------------GTK objects used by other functions & main--------------*)
+(*mockup user list.*)
+let users = [Some "Eric Wang";Some "Somrita42";
+             Some "bcForLife";Some "yuhuan_vim"]
+
+(*See GObject.data_conv*)
+let stringList_conv =
+  let open Gobject in
+  {kind=`STRING;
+   proj=(fun x -> match x with
+                  |`STRING y -> y
+                  |_ -> failwith "conversion failed! not a string.");
+   inj=(fun x -> match x with
+                 |Some x -> `STRING (Some x)
+                 |None -> `STRING (None) )
+  }
+
+let userList = GTree.store_of_list stringList_conv users
+
 let tag =
   let temp = GText.tag ~name:"msg_id_tag"() in
   temp#set_property (`WEIGHT (`BOLD));temp
@@ -27,6 +45,7 @@ let tagTable =
 
 let chatBuffer = GText.buffer ~tag_table:tagTable
                               ~text:"Welcome to Club Caml!\n" ()
+
 (*the vertical scrollbar*)
 let adjustment = GData.adjustment ()
 
@@ -40,7 +59,8 @@ let msgInsert identifier msg =
   adjustment#set_value (adjustment#upper)
 
 let clearChat () =
-  chatBuffer#delete (chatBuffer#get_iter `START) chatBuffer#end_iter
+  chatBuffer#delete (chatBuffer#get_iter `START) chatBuffer#end_iter;
+  chatBuffer#insert "Welcome to Club Caml!\n"
 
 
 
@@ -106,13 +126,14 @@ let main () =
   ignore(factory#add_item "Clear Chat" ~key:_R ~callback:(clearChat));
 
   (*Paned Window Widgets*)
-  let masterPaned = GPack.paned `HORIZONTAL ~packing:vbox#add () in
-  let leftPaned = GPack.paned `VERTICAL ~packing:masterPaned#add () in
-  ignore(leftPaned#set_position (642));
+  let pane = GPack.paned `VERTICAL ~packing:vbox#add () in
+  ignore(pane#set_position (642));
 
   (*Chat box widget*)
   let scrolledWindow = GBin.scrolled_window ~vadjustment:adjustment
-                                            ~packing:leftPaned#add () in
+                                            ~packing:pane#add () in
+  scrolledWindow#set_hpolicy `NEVER;
+  scrolledWindow#set_vpolicy `AUTOMATIC;
 
   let chatView = GText.view ~wrap_mode:`WORD ~editable:false
                             ~cursor_visible:false
@@ -128,7 +149,7 @@ let main () =
   let usrColumn = usrs#add Gobject.Data.string in
   let rightPaneUsrList = GTree.view ~model: *)
 
-  let entryBox = GPack.hbox ~packing:leftPaned#add () in
+  let entryBox = GPack.hbox ~packing:pane#add () in
 
   (*User text entry widget*)
   let enter_cb entry () =
