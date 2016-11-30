@@ -28,6 +28,7 @@ indent: *.ml
 
 clean:
 	ocamlbuild -clean
+	rm camlserver camlclient
 
 # vim:ft=make
 #
