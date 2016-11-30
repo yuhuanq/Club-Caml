@@ -186,6 +186,7 @@ let main ipstring =
     in
     start_connection login pass ic oc >>= fun () ->
     print_endline "before protocol read_frame in client";
+    lwt () = Lwt_log.info "before protocol read_Frame in client" in
     Protocol.read_frame ic >>= fun fr ->
     repl ()
     (* f >> repl () *)
@@ -197,6 +198,6 @@ let main ipstring =
    * | _ -> return (print_endline "Some other error")
    *)
 
+let () = Lwt_log.add_rule "*" Lwt_log.Info
 let () = Lwt_unix.run (main "127.0.0.1")
-
 
