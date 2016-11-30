@@ -50,12 +50,12 @@ let read_password_and_login ()=
   (log,pass)
 
 let start_connection login pass servFromChannel servToChannel=
-  let conframe=Protocol.make_connect login pass in
-  let newconn={input=servFromChannel;
-              output=servToChannel;
-              topic=None;
-              username=login} in
-  cur_connection:=newconn;
+  let conframe = Protocol.make_connect login pass in
+  let newconn = {input = servFromChannel;
+                 output = servToChannel;
+                 topic = None;
+                 username = login} in
+  cur_connection := newconn;
   Protocol.send_frame conframe newconn.output
 
 let port=9000
@@ -166,32 +166,37 @@ let rec repl () =
  *)
 
 let main ipstring =
-  let open Lwt_unix in
-  try let inet_addr = inet_addr_of_string ipstring in
-  let foreignSockAddr = ADDR_INET (inet_addr,port) in
-  let sock = Lwt_unix.socket PF_INET SOCK_STREAM 0 in
-  (*Do not need to bind, it is implicitly done - google this*)
-  (*let () = Lwt_unix.bind sock (ADDR_INET (inet_addr_loopback,port)) in*)
-  let _ = Lwt_unix.connect sock foreignSockAddr in
-  let oc= Lwt_io.of_fd Lwt_io.Output sock in
-  let ic= Lwt_io.of_fd Lwt_io.Input sock in
-  let (login,pass)=read_password_and_login () in
-  let f=fun x->
-          match x.cmd with
-          | CONNECTED->
-              return (print_endline "CONNECTED frame rec")
-              (* Lwt_io.print ("CONNECTED frame recvd")>>= *)
-          (* (fun ()->Lwt_io.print ("body of frame recvd: "^x.body)) *)
-          | _-> return (print_endline "expected CONNECTED frame")
-  in
-  start_connection login pass ic oc >>=
-  (fun () -> print_endline "before protocol read_frame in client";
-  Protocol.read_frame ic
-  >>= f) >> repl ()
-  with
-  | Failure _ ->
-          return (ANSITerminal.(print_string [red]
-            "\n\nError. Malformed IP Address.\n"))
-  |_-> return (print_endline "Some other error")
+  (* try_lwt *)
+    let inet_addr : Lwt_unix.inet_addr = Unix.inet_addr_of_string ipstring in
+    let addr = Lwt_unix.ADDR_INET (inet_addr,port) in
+    let sock = Lwt_unix.socket Lwt_unix.PF_INET Lwt_unix.SOCK_STREAM 0 in
+    (*Do not need to bind, it is implicitly done - google this*)
+    print_endline "right before lwt_unix.connect sock addr";
+    lwt () = Lwt_unix.connect sock addr in
+    (* >>= fun () -> *)
+    let oc = Lwt_io.of_fd Lwt_io.Output sock in
+    let ic = Lwt_io.of_fd Lwt_io.Input sock in
+    print_endline "right before read pw";
+    let (login,pass) = read_password_and_login () in
+    let f=fun x->
+            match x.cmd with
+            | CONNECTED->
+                return (print_endline "CONNECTED frame rec")
+            | _-> return (print_endline "expected CONNECTED frame")
+    in
+    start_connection login pass ic oc >>= fun () ->
+    print_endline "before protocol read_frame in client";
+    Protocol.read_frame ic >>= fun fr ->
+    repl ()
+    (* f >> repl () *)
+  (*
+   * with
+   * | Failure _ ->
+   *         return (ANSITerminal.(print_string [red]
+   *           "\n\nError. Malformed IP Address.\n"))
+   * | _ -> return (print_endline "Some other error")
+   *)
 
-let _ = main "127.0.0.1"
+let () = Lwt_unix.run (main "127.0.0.1")
+
+
