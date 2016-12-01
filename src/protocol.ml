@@ -291,7 +291,4 @@ let make_game_resp dest game_str sender =
                "content-length",string_of_int (String.length game_str)];
     body = game_str }
 
-let make_data_frame =
-  { cmd = DATA_FRAME;
-    headers =
-  }
+(* let make_data  *)

@@ -136,8 +136,8 @@ let rec handle_incoming_frames ()=
                 Lwt_log.info ("body of frame recvd: "^x.body)
     | ERROR-> Lwt_log.info "received ERROR frame"
     | INFO -> Lwt_log.info "received INFO frame"
+    | GAME_RESP -> Lwt_log.info "received GAME_RESP frame."
     | x-> Lwt_log.info ("received a frame of type not expected")
-
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
