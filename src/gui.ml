@@ -125,15 +125,12 @@ let main () =
   let factory = new GMenu.factory view_menu ~accel_group in
   ignore(factory#add_item "Clear Chat" ~key:_R ~callback:(clearChat));
 
-  (*Paned Window Widgets*)
-  let pane = GPack.paned `VERTICAL ~packing:vbox#add () in
-  ignore(pane#set_position (642));
-
   (*Chat box widget*)
   let scrolledWindow = GBin.scrolled_window ~vadjustment:adjustment
-                                            ~packing:pane#add () in
+                                            ~packing:vbox#add () in
   scrolledWindow#set_hpolicy `NEVER;
   scrolledWindow#set_vpolicy `AUTOMATIC;
+  scrolledWindow#misc#set_size_request ~height:650 ();
 
   let chatView = GText.view ~wrap_mode:`WORD ~editable:false
                             ~cursor_visible:false
@@ -149,7 +146,7 @@ let main () =
   let usrColumn = usrs#add Gobject.Data.string in
   let rightPaneUsrList = GTree.view ~model: *)
 
-  let entryBox = GPack.hbox ~packing:pane#add () in
+  let entryBox = GPack.hbox ~packing:vbox#add () in
 
   (*User text entry widget*)
   let enter_cb entry () =
@@ -165,11 +162,11 @@ let main () =
 
   let entry = GEdit.entry ~max_length:500 ~packing:entryBox#add () in
   ignore(entry#connect#activate ~callback:(enter_cb entry));
-  entry#misc#set_size_request ~width:900 ~height:40 () ; (*make button width small*)
+  entry#misc#set_size_request ~width:920 ~height:40 () ; (*make button width small*)
 
 
   (* Button *)
-  let sendButton = GButton.button ~relief:`NONE
+  let sendButton = GButton.button ~relief:`NORMAL
                               ~packing:entryBox#add () in
   ignore(sendButton#connect#clicked
     ~callback: (fun () -> (enter_cb entry ())));
