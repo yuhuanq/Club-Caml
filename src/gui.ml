@@ -79,7 +79,7 @@ let main () =
   let about_dialog () =
     let authors = ["Yuhuan Qiu";"Eric Wang";"Somrita Banerjee";"Byungchan Lim"]
     in
-    let license = "Distributed under terms of the MIT license." in
+    let license = License.license in
     let version = "Alpha 0.1" in
     let copyright = "2016" in
     let about_popup = GWindow.about_dialog ~authors:authors ~license:license
