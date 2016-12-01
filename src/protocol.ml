@@ -67,7 +67,7 @@ let cmd_of_str = function
   | "GAME_RESP"   -> GAME_RESP
   | _             -> failwith "illegal cmd string"
 
-let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun () -> f)
+let (>>) (dt : unit Lwt.t) f = dt >>= (fun _ -> f)
 
 (*
  * [frame_of_buf buf] is a frame record. Given a string [buf] in STOMP format
@@ -144,18 +144,20 @@ let pack frame =
     begin
       Buffer.add_string buf "content-length";
       Buffer.add_char buf ':';
-      let len = (List.assoc "content-length" frame.headers) in
+       let len = (List.assoc "content-length" frame.headers) in
       Buffer.add_string buf (len);
       Buffer.add_char buf '\n';
     end
   else ();
   Buffer.add_char buf '\n';
   Buffer.add_string buf frame.body;
-  Buffer.add_char buf '\x00';
+  Buffer.add_string buf "\x00\n";
   buf
 
 let send_frame frame oc =
+  print_endline "sending a frame";
   let buf = pack frame in
+  print_endline (Buffer.contents buf);
   let payload = Buffer.contents buf in
   Lwt_io.write oc payload >>
   Lwt_io.flush oc
@@ -172,27 +174,30 @@ let rec read_to_null ic =
   Lwt_io.read_line ic >>= f
 
 let read_frame ic =
-  let cmd = Lwt_io.read_line ic in
+  print_endline "starting to read_frame";
+  (* let cmd = Lwt_io.read_line ic in *)
   let rec read_headers acc =
     Lwt_io.read_line ic  >>=
     (fun s ->
        match s with
        (* headers done if empty str *)
-       | "" -> return acc
+       | "" -> print_endline "done reading headers"; return acc
        | s ->
+         print_endline ("in reading headers match case: s " ^ s);
          let sep = Str.regexp ":" in
          match Str.split sep s with
          | []    -> read_headers acc
          | [k;v] -> read_headers ((k,v)::acc)
          | h::t -> read_headers acc) in
   let final = (fun c ->
+    print_endline ("read cmd " ^ c);
     read_headers [] >>=
     (fun lst ->
        try
          let read_len = List.assoc "content-length" lst in
          let read_len = int_of_string read_len in
          let bytebuf = Bytes.create read_len in
-         let _ = Lwt_io.read_into_exactly ic bytebuf read_len 0 in
+         Lwt_io.read_into_exactly ic bytebuf read_len 0 >>
          return {cmd = cmd_of_str c; headers = lst ; body = bytebuf }
        with Not_found ->
           (*
@@ -201,7 +206,7 @@ let read_frame ic =
          *)
          let _ = read_to_null ic in
          return {cmd = cmd_of_str c; headers = lst ; body = ""})) in
-  cmd >>= final
+  Lwt_io.read_line ic >>= final
 
 (* [get_header frame name]  *)
 let get_header frame name =

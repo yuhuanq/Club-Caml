@@ -5,11 +5,6 @@
  *
  * Distributed under terms of the MIT license.
 *)
-(*
- * TODO:
- *   define some destination or frame for purpose of client pulling info from the
- *   server
- *)
 
 (* Reminder:
 1. Do I need to implement execute_game_cmd function with try_lwt and
@@ -24,7 +19,7 @@ let (>>|) = (>|=)
 
 (* Anonymous bind:
  * syntactic sugar from Lwt.syntax but Merlin doesn't recognize..so manually *)
-let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun () -> f)
+let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun _ -> f)
 
 (* Game data for a single ongoing game. *)
 type game_data = {
@@ -142,12 +137,15 @@ let backlog = 10 (* max num of connections? not working *)
 (* enable logging up to the INFO level *)
 let () = Lwt_log.add_rule "*" Lwt_log.Info
 
-(* [get_usernames conns_set] is a string list of the usernames of a CONNSET *)
+(* [get_usernames conns_set] is a string list of the usernames of a connections
+ * set*)
 let get_usernames conns_set =
   CSET.fold (fun elt acc -> elt.username::acc) conns_set []
 
-(* [get_users_subbed topic] is a string list of the current usernames subbed to
- * a [topic] *)
+(*
+ * [get_users_subbed topic] is a string list of the current usernames subbed to a
+ * [topic]
+*)
 let get_users_subbed topic =
   let conns' = H.find state.map topic in get_usernames conns'
 
@@ -156,10 +154,12 @@ let gather_info () =
   H.fold (fun k v acc -> (k,string_of_int (List.length (CSET.elements v)))::acc)
     state.map []
 
+
 (* [newi] is a unique int *)
 let newi =
   let r = ref 0 in
   (fun () -> r:=!r + 1; !r)
+
 
 let handle_send_topic frame conn =
   let topic = Protocol.get_header frame "destination" in
@@ -191,15 +191,15 @@ let handle_send_private frame conn =
  * [handle_send] handles a SEND frame. A SEND commands sends a message to a
  * destination in the system.
 *)
-(* val handle_subscribe : frame -> connection -> unit Lwt.t  *)
+(* val handle_send : frame -> connection -> unit Lwt.t  *)
 let handle_send frame conn =
   try_lwt
     let topic = Protocol.get_header frame "destination" in
     if Str.string_match topic_re topic 0 then handle_send_topic frame conn
     else if Str.string_match private_re topic 0 then handle_send_private frame
     conn
-    else raise Not_found
-  with Not_found ->
+    else failwith "Invalid send destination"
+  with Not_found | _ ->
     let err = make_error "" "Invalid destination header" in
     Protocol.send_frame err conn.output >> return_unit
 
@@ -213,12 +213,14 @@ let handle_send frame conn =
 (* val handle_subscribe : frame -> connection -> unit Lwt.t  *)
 let handle_subscribe frame conn =
   let topic = Protocol.get_header frame "destination" in
+  let _= (Lwt_log.info (conn.username ^ " trying to subscribe to " ^ topic) >>
+  return_unit) in
   let conn' = {conn with topic = Some topic} in
   try_lwt
     let conns = H.find state.map topic in
     let conns' = CSET.add conn' conns in
     H.replace state.map topic conns';
-    let _=print_endline (conn.username ^ " subscribed to " ^ topic) in
+    print_endline (conn.username ^ " subscribed to " ^ topic);
     Lwt_log.info (conn.username ^ " subscribed to " ^ topic) >>
     return_unit
   with Not_found ->
@@ -286,8 +288,9 @@ let handle_unsubscribe frame conn =
 (* [handle_disconnect] does a graceful disconnect for a client from the server *)
 (* val handle_subscribe : frame -> connection -> unit  *)
 let handle_disconnect frame conn =
-  Lwt_io.abort conn.output >>=
-  (fun _ ->
+  (* TODO: fix *)
+  Lwt_log.info "handling disconnect" >>= fun _ ->
+  Lwt_io.abort conn.output >>= fun _ ->
      (* remove from  connections *)
      state.connections <- CSET.remove conn state.connections;
      H.remove state.user_map conn.username;
@@ -298,7 +301,6 @@ let handle_disconnect frame conn =
      H.iter f state.map;
      Lwt_log.info ("disconnected " ^ conn.username) >>
      return ()
-  )
 
 (* [execute_game_cmd game_cmd topic players] updates map_game_data which
  * stores data for all games in each room based on the string [game_cmd] and
@@ -362,6 +364,7 @@ let handle_game_server_side frame conn =
    return () *)
 
 let handle_frame frame conn =
+  print_endline "in handle frame";
   match frame.cmd with
   | SEND -> let _=print_endline "Received a send frame" in
             handle_send frame conn
@@ -375,9 +378,21 @@ let handle_frame frame conn =
             handle_game_server_side frame conn
   | _ -> failwith "invalid client frame"
 
-let rec handle_connection conn () =
-  lwt frame = Protocol.read_frame conn.input in
-  handle_frame frame conn >> handle_connection conn ()
+let handle_connection conn () =
+  let rec loop () =
+    lwt frame = Protocol.read_frame conn.input in
+    handle_frame frame conn >>
+    loop ()
+  in
+    loop ()
+
+(*
+ * let rec handle_connection conn () =
+ *   Lwt_log.info "in handle connection" >>= fun _ ->
+ *   Protocol.read_frame conn.input >>= fun frame ->
+ *   handle_frame frame conn >> handle_connection conn ()
+ *)
+
 (* Protocol.read_frame conn.input >>= *)
 (* (fun frame -> *)
 (* handle_frame frame conn >>= (fun () -> handle_connection conn ())) *)
@@ -414,7 +429,7 @@ let close_connection conn =
  * client-server. Try to read a CONNECT frame in, if so => send CONNECTED and
  * return a connection record, else send an ERROR frame
 *)
-let establish_connection ic oc client_id=
+let establish_connection ic oc client_id =
   let f fr =
     let _=print_endline "Received some frame" in
     match fr.cmd with
@@ -432,15 +447,19 @@ let establish_connection ic oc client_id=
           let reply = make_error "" "Username already taken" in
           Protocol.send_frame reply oc >> Lwt_io.abort ic
         else
+          Lwt_log.info ("user " ^ username ^ " has logged in.") >>= fun _ ->
           let conn = {input = ic; topic = None; output = oc; username = username} in
           state.connections <- CSET.add conn state.connections;
           H.add state.user_map conn.username conn;
           (* let _ = Protocol.send_frame reply oc in *)
           try_lwt
             Protocol.send_frame reply oc >>=
-            ( fun () -> Lwt.on_failure (handle_connection conn ()) (fun e -> Lwt_log.ign_error
-                                                                               (Printexc.to_string e));
-              Lwt_log.info ("New connection from " ^ client_id) >>= return )
+              fun () ->
+                Lwt_log.info ("New connection from " ^
+                client_id) >>= fun _ ->
+                Lwt.on_failure (handle_connection conn ())
+                (fun e -> Lwt_log.ign_error (Printexc.to_string e));
+                return_unit
           with
           | _ ->
             close_connection conn
@@ -475,7 +494,7 @@ let accept_connection (fd, sckaddr) =
 let create_socket () =
   let open Lwt_unix in
   let sock = socket PF_INET SOCK_STREAM 0 in
-  bind sock (ADDR_INET(listen_address,port));
+  bind sock @@ ADDR_INET(listen_address, port);
   listen sock backlog;
   sock
 
