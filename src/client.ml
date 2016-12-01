@@ -15,6 +15,7 @@
 open Unix
 open Lwt
 open Protocol
+open Games
 
 type connection = {
   input      : Lwt_io.input_channel;
@@ -119,6 +120,11 @@ let handle_message msg cur_topic=
   let msgframe= make_send cur_topic msg in
   send_frame msgframe (!cur_connection).output
 
+let handle_game_client_side game_msg cur_topic =
+  let sender=(!cur_connection).username in
+  let gameframe = Protocol.make_game cur_topic game_msg sender in
+  send_frame gameframe (!cur_connection).output
+
 (* TODO: handle incoming messages*)
 
 let rec handle_incoming_frames ()=
@@ -130,10 +136,13 @@ let rec handle_incoming_frames ()=
                 Lwt_log.info ("body of frame recvd: "^x.body)
     | ERROR-> Lwt_log.info "received ERROR frame"
     | INFO -> Lwt_log.info "received INFO frame"
+    | GAME_RESP -> Lwt_log.info "received GAME_RESP frame."
+    | x-> Lwt_log.info ("received a frame of type not expected")
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
    [#join nroom] joins a new room (requires not in any room currently)
+   [#game game_msg] plays a game
    [#chatbot] changes to chatbot room
    [#quit] closes the connection to server
  Note: only change, leave, join, quit, game implemented
@@ -168,6 +177,11 @@ let rec repl () =
             let nroom=String.sub directive 6 ((String.length directive)-6) in
             print_endline ("joining " ^ nroom);
             handle_join nroom >> repl ()
+          |"#game" ->
+            let game_msg=String.sub directive 6 ((String.length directive)-6) in
+            handle_game_client_side game_msg cur_topic
+          | "#chatbot" -> failwith "Unimplemented"
+          | _ -> failwith "invalid # command"
           end
         end
     end
