@@ -7,9 +7,29 @@
 *)
 
 (* Reminder:
-1. Do I need to implement execute_game_cmd function with try_lwt and
-lwt operations? Or is just a simple try fine?
-2. Need to finish implementing flushing in server *)
+1. Need to finish implementing flushing in server
+2. When game ends? *)
+
+(* To keep track of the stuff I'm doing, I am writing this. Will erase
+once I am done with games and DB. *)
+(* How Game works (Done except step 5)
+1. Command starting with #game is written on repl
+2. Client makes a game frame containing the command's information and
+sends it to server
+3. Server accepts the game frame, updates its internal data structure containing
+data for all games that are currently being played.
+4. Server makes a game_resp frame containing a string representation
+of the updated game state and sends it to client
+5. Client accepts the game_resp frame and prints the game state on the user's
+terminal using the string representation of the game state in game_resp frame.
+*)
+
+(* How Database works:
+2. Client makes a DATA frame containing the command's information and sends it
+to server
+3. Server accepts DATA frame. If DATA frame requests less than the number of
+units of data that server has stored in its internal data structure, then
+*)
 
 open Lwt
 open Protocol
@@ -521,4 +541,3 @@ let run_server () =
   clean_state ();
   let serve = create_server () in
   Lwt_main.run @@ serve ()
-
