@@ -31,7 +31,7 @@ let string_list_conv =
                  |None -> `STRING (None) )
   }
 
-let userList = GTree.store_of_list string_list_conv users
+let (user_list_store,column) = GTree.store_of_list string_list_conv users
 
 let tag =
   let temp = GText.tag ~name:"msg_id_tag"() in
@@ -128,31 +128,45 @@ let main () =
   (*chat box and user info PANED*)
   let chat_and_info = GPack.paned `HORIZONTAL ~packing: vbox#add () in
   chat_and_info#misc#set_size_request ~height:650 ();
+  chat_and_info#set_position 810;
 
   (*Chat box widget*)
   let scrolled_window = GBin.scrolled_window ~vadjustment:adjustment
-                                            ~packing:chat_and_info#add () in
+                                             ~packing:chat_and_info#add () in
   scrolled_window#set_hpolicy `NEVER;
   scrolled_window#set_vpolicy `AUTOMATIC;
   scrolled_window#misc#set_size_request ~height:650 ();
 
   let chat_view = GText.view ~wrap_mode:`WORD ~editable:false
-                            ~cursor_visible:false
-                            ~packing:scrolled_window#add () in
+                             ~cursor_visible:false
+                             ~packing:scrolled_window#add () in
 
   ignore(chat_view#set_buffer chat_buffer);
 
   (*Users in room stuff*)
-  let usr_window = GBin.scrolled_window ~packing:chat_and_info#add () in
+  let scrolled_usr = GBin.scrolled_window ~packing:chat_and_info#add () in
+  scrolled_usr#set_hpolicy `NEVER;
+  scrolled_usr#set_vpolicy `AUTOMATIC;
+  let usr_view = GTree.view ~model:user_list_store
+                            ~packing:scrolled_usr#add () in
+
+  let usr_view_column = GTree.view_column  ~title:"Users Online"
+            ~renderer:(GTree.cell_renderer_text [`XALIGN 0.5],
+                       ["text",column]) ()
+  in
+  usr_view_column#set_alignment 0.5;
+  ignore(usr_view#append_column usr_view_column);
+
+  (*Menu option to hide users in room*)
+  let usr_view_hidden = ref false in
+  ignore(factory#add_item "Toggle User Panel" ~key:_H
+       ~callback:(fun () -> if !usr_view_hidden = false then
+                            (usr_view_hidden:=true;scrolled_usr#misc#hide ())
+                            else (usr_view_hidden:=false;
+                                  scrolled_usr#misc#show ())));
 
 
-  (*
-  (*Users in room*)
-  let usrWindow = GBin.scrolled_window in
-  let usrs = new GTree.column_list in
-  let usrColumn = usrs#add Gobject.Data.string in
-  let rightPaneUsrList = GTree.view ~model: *)
-
+  (*---------------------------------------------------------*)
   let entry_box = GPack.hbox ~packing:vbox#add () in
 
   (*User text entry widget*)
@@ -172,7 +186,7 @@ let main () =
   entry#misc#set_size_request ~width:920 ~height:40 () ; (*make button width small*)
 
 
-  (* Button *)
+  (* Send Button *)
   let send_button = GButton.button ~relief:`NORMAL
                                    ~packing:entry_box#add () in
   ignore(send_button#connect#clicked
