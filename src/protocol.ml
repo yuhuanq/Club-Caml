@@ -169,6 +169,7 @@ let send_frame frame oc =
  * val read_to_null ic : Lwt_io.input_channel -> unit Lwt.t
 *)
 let rec read_to_null ic =
+  print_endline "looping in [read_to_null ic]";
   let f = function
     | "\x00" -> return ()
     | _ -> read_to_null ic in
@@ -198,15 +199,19 @@ let read_frame ic =
          let read_len = List.assoc "content-length" lst in
          let read_len = int_of_string read_len in
          let bytebuf = Bytes.create read_len in
-         Lwt_io.read_into_exactly ic bytebuf read_len 0 >>
-         read_to_null ic >>
+         Lwt_io.read_into_exactly ic bytebuf read_len 0 >>= fun () ->
+         (* print_endline "right before [read_to_null ic in found match case]"; *)
+         lwt (_ : string) = Lwt_io.read_line ic in
+         print_endline "Done reading, just about to returned frame";
          return {cmd = cmd_of_str c; headers = lst ; body = bytebuf }
        with Not_found ->
           (*
           * if no content-length header then body is empty
           * and read to the nullbyte
          *)
-         read_to_null ic >>
+         print_endline "right before [read_to_null ic] in Not_found match case";
+         read_to_null ic >>= fun () ->
+         print_endline "Done reading, just about to returned frame";
          return {cmd = cmd_of_str c; headers = lst ; body = ""})) in
   Lwt_io.read_line ic >>= final
 

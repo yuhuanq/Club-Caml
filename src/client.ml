@@ -127,6 +127,18 @@ let handle_game_client_side game_msg cur_topic =
 
 (* TODO: handle incoming messages*)
 
+let rec handle_incoming_frames ()=
+  let ic=(!cur_connection).input in
+  Protocol.read_frame ic>>=
+  fun x->
+    match x.cmd with
+    | MESSAGE-> Lwt_log.info "received MESSAGE frame">>
+                Lwt_log.info ("body of frame recvd: "^x.body)
+    | ERROR-> Lwt_log.info "received ERROR frame"
+    | INFO -> Lwt_log.info "received INFO frame"
+    | x-> Lwt_log.info ("received a frame of type not expected")
+
+
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
    [#join nroom] joins a new room (requires not in any room currently)
