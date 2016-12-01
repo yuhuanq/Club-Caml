@@ -65,7 +65,8 @@ let cmd_of_str = function
   | "ERROR"       -> ERROR
   | "GAME"        -> GAME
   | "GAME_RESP"   -> GAME_RESP
-  | _             -> failwith "illegal cmd string"
+  | x             -> print_endline x;
+                     failwith "illegal cmd string"
 
 let (>>) (dt : unit Lwt.t) f = dt >>= (fun _ -> f)
 
@@ -198,13 +199,14 @@ let read_frame ic =
          let read_len = int_of_string read_len in
          let bytebuf = Bytes.create read_len in
          Lwt_io.read_into_exactly ic bytebuf read_len 0 >>
+         read_to_null ic >>
          return {cmd = cmd_of_str c; headers = lst ; body = bytebuf }
        with Not_found ->
           (*
           * if no content-length header then body is empty
           * and read to the nullbyte
          *)
-         let _ = read_to_null ic in
+         read_to_null ic >>
          return {cmd = cmd_of_str c; headers = lst ; body = ""})) in
   Lwt_io.read_line ic >>= final
 

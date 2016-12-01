@@ -19,7 +19,7 @@ let (>>|) = (>|=)
 
 (* Anonymous bind:
  * syntactic sugar from Lwt.syntax but Merlin doesn't recognize..so manually *)
-let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun _ -> f)
+let (>>) (dt : unit Lwt.t) f = dt >>= (fun () -> f)
 
 (* Game data for a single ongoing game. *)
 type game_data = {
@@ -289,7 +289,7 @@ let handle_unsubscribe frame conn =
 (* val handle_subscribe : frame -> connection -> unit  *)
 let handle_disconnect frame conn =
   (* TODO: fix *)
-  Lwt_log.info "handling disconnect" >>= fun _ ->
+  Lwt_log.info ("Disconnecting user: " ^ conn.username) >>
   Lwt_io.abort conn.output >>= fun _ ->
      (* remove from  connections *)
      state.connections <- CSET.remove conn state.connections;
@@ -299,8 +299,8 @@ let handle_disconnect frame conn =
        let conns' = CSET.remove conn v in
        H.replace state.map k conns' in
      H.iter f state.map;
-     Lwt_log.info ("disconnected " ^ conn.username) >>
-     return ()
+     (* terminate the thread now with exn *)
+     fail End_of_file
 
 (* [execute_game_cmd game_cmd topic players] updates map_game_data which
  * stores data for all games in each room based on the string [game_cmd] and
@@ -368,11 +368,15 @@ let handle_frame frame conn =
   match frame.cmd with
   | SEND -> let _=print_endline "Received a send frame" in
             handle_send frame conn
-  | SUBSCRIBE -> let _=print_endline "Received a subscribe frame" in
+  | SUBSCRIBE ->
+                 (* print_endline "Received a subscribe frame"; *)
+                 Lwt_log.info "Received an subscribe frame" >>= fun _ ->
                  handle_subscribe frame conn
-  | UNSUBSCRIBE -> let _=print_endline "Received an unsubscribe frame" in
-                   handle_unsubscribe frame conn
-  | DISCONNECT -> let _=print_endline "Received a disconnect frame" in
+  | UNSUBSCRIBE ->
+                  (* let _=print_endline "Received an unsubscribe frame" in *)
+                  Lwt_log.info "Received an Unsub farme" >>= fun _ ->
+                  handle_unsubscribe frame conn
+  | DISCONNECT -> Lwt_log.info "disconnecting a client" >>= fun _ ->
                   handle_disconnect frame conn
   | GAME -> let _=print_endline "Received a game frame" in
             handle_game_server_side frame conn
@@ -434,7 +438,7 @@ let establish_connection ic oc client_id =
     let _=print_endline "Received some frame" in
     match fr.cmd with
     | CONNECT ->
-      let _=print_endline ("New connection from " ^ client_id) in
+      print_endline ("New connection from " ^ client_id);
       begin
         (* let reply = make_connected (string_of_int (newi ()) ) in *)
         let reply = {
@@ -518,4 +522,3 @@ let run_server () =
   let serve = create_server () in
   Lwt_main.run @@ serve ()
 
-let ()=run_server ()

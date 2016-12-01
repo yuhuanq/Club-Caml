@@ -5,10 +5,18 @@
 # sb892, 2016-11-26 19:31
 
 all:
-	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix,ANSITerminal -syntax camlp4o client.byte protocol.byte client_entry.byte server.byte
-  #ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.unix,ANSITerminal client.byte protocol.byte client_entry.byte
-  #ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o client.byte run_server.byte
+	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_server.byte
+	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_client.byte
+	mv run_server.byte camlserver
+	mv run_client.byte camlclient
 
+server:
+	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_server.byte
+	mv run_server.byte camlserver
+
+client:
+	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_client.byte
+	mv run_client.byte camlclient
 
 test:
 	# ocamlbuild use-ocamlfind -pkgs str,lwt,lwt.unix,oUnit test_protocol.byte && ./test_protocol.byte
@@ -20,11 +28,7 @@ indent: *.ml
 
 clean:
 	ocamlbuild -clean
-
-client:
-	ocamlbuild -pkgs str,lwt,lwt.unix,ANSITerminal client_entry.byte && ./client_entry.byte
-
-
+	rm camlserver camlclient
 
 # vim:ft=make
 #
