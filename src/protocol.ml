@@ -152,6 +152,7 @@ let pack frame =
   else ();
   Buffer.add_char buf '\n';
   Buffer.add_string buf frame.body;
+  print_endline ("frame body: " ^ frame.body);
   Buffer.add_string buf "\x00\n";
   buf
 
@@ -199,11 +200,11 @@ let read_frame ic =
          let read_len = List.assoc "content-length" lst in
          let read_len = int_of_string read_len in
          let bytebuf = Bytes.create read_len in
-         Lwt_io.read_into_exactly ic bytebuf read_len 0 >>= fun () ->
+         Lwt_io.read_into_exactly ic bytebuf 0 read_len >>= fun () ->
          (* print_endline "right before [read_to_null ic in found match case]"; *)
          lwt (_ : string) = Lwt_io.read_line ic in
          print_endline "Done reading, just about to returned frame";
-         return {cmd = cmd_of_str c; headers = lst ; body = bytebuf }
+         return {cmd = cmd_of_str c; headers = lst ; body = (Bytes.to_string bytebuf) }
        with Not_found ->
           (*
           * if no content-length header then body is empty
