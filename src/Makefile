@@ -5,7 +5,7 @@
 # sb892, 2016-11-26 19:31
 
 all:
-	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_server.byte
+	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_server.byte
 	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_client.byte
 	mv run_server.byte camlserver
 	mv run_client.byte camlclient
