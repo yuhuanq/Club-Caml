@@ -29,8 +29,6 @@ terminal using the string representation of the game state in game_resp frame.
 to server
 3. Server accepts DATA frame. If DATA frame requests less than the number of
 units of data that server has stored in its internal data structure, then
-
-
 *)
 
 open Lwt
@@ -39,7 +37,8 @@ open Games
 
 let (>>|) = (>|=)
 
-(* Anonymous bind *)
+(* Anonymous bind:
+ * syntactic sugar from Lwt.syntax but Merlin doesn't recognize..so manually *)
 let (>>) (dt : unit Lwt.t) f = dt >>= (fun () -> f)
 
 (* Game data for a single ongoing game. *)
@@ -234,6 +233,8 @@ let handle_send frame conn =
 (* val handle_subscribe : frame -> connection -> unit Lwt.t  *)
 let handle_subscribe frame conn =
   let topic = Protocol.get_header frame "destination" in
+  let _= (Lwt_log.info (conn.username ^ " trying to subscribe to " ^ topic) >>
+  return_unit) in
   let conn' = {conn with topic = Some topic} in
   try_lwt
     let conns = H.find state.map topic in
@@ -383,15 +384,19 @@ let handle_game_server_side frame conn =
    return () *)
 
 let handle_frame frame conn =
-  Lwt_log.info "in [handle_frame]" >>
+  print_endline "in handle frame";
   match frame.cmd with
-  | SEND -> Lwt_log.info "Recieved a send frame" >>
+  | SEND -> let _=print_endline "Received a send frame" in
             handle_send frame conn
-  | SUBSCRIBE -> Lwt_log.info "Received an subscribe frame" >>
+  | SUBSCRIBE ->
+                 (* print_endline "Received a subscribe frame"; *)
+                 Lwt_log.info "Received an subscribe frame" >>= fun _ ->
                  handle_subscribe frame conn
-  | UNSUBSCRIBE -> Lwt_log.info "Received an Unsub farme" >>
+  | UNSUBSCRIBE ->
+                  (* let _=print_endline "Received an unsubscribe frame" in *)
+                  Lwt_log.info "Received an Unsub farme" >>= fun _ ->
                   handle_unsubscribe frame conn
-  | DISCONNECT -> Lwt_log.info "disconnecting a client" >>
+  | DISCONNECT -> Lwt_log.info "disconnecting a client" >>= fun _ ->
                   handle_disconnect frame conn
   | GAME -> let _=print_endline "Received a game frame" in
             handle_game_server_side frame conn
@@ -450,7 +455,7 @@ let close_connection conn =
 *)
 let establish_connection ic oc client_id =
   let f fr =
-    print_endline "Received some frame";
+    let _=print_endline "Received some frame" in
     match fr.cmd with
     | CONNECT ->
       print_endline ("New connection from " ^ client_id);
@@ -470,6 +475,7 @@ let establish_connection ic oc client_id =
           let conn = {input = ic; topic = None; output = oc; username = username} in
           state.connections <- CSET.add conn state.connections;
           H.add state.user_map conn.username conn;
+          (* let _ = Protocol.send_frame reply oc in *)
           try_lwt
             Protocol.send_frame reply oc >>=
               fun () ->
@@ -500,6 +506,7 @@ let accept_connection (fd, sckaddr) =
       let open Unix in
       string_of_inet_addr inet_addr
     | _ -> "unknown" in
+  let _=print_endline ("client connected of id "^client_id) in
   let ic = Lwt_io.of_fd Lwt_io.Input fd in
   let oc = Lwt_io.of_fd Lwt_io.Output fd in
   establish_connection ic oc client_id
@@ -521,17 +528,16 @@ let create_socket () =
  * accept and treats it with [accept_connection].
 *)
 let create_server () =
-  print_endline "Creating socket\n";
+  let _=print_endline "Creating socket\n" in
   let server_socket = create_socket () in
   let rec serve () =
-    lwt (fd,sockaddr) = Lwt_unix.accept server_socket in
-    accept_connection (fd,sockaddr) >> serve ()
-    (* let client = Lwt_unix.accept server_socket in *)
-    (* client >>= accept_connection >>= serve *)
-  in serve ()
+    let client = Lwt_unix.accept server_socket in
+    client >>= accept_connection >>= serve
+  in serve
 
 (* initialize the server *)
 let run_server () =
+  let _=print_endline "Running server\n" in
   clean_state ();
   let serve = create_server () in
-  Lwt_main.run @@ serve
+  Lwt_main.run @@ serve ()
