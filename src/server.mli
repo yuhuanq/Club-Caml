@@ -24,6 +24,7 @@ module CSET : Set.S
 module TOPICSET: Set.S
 module MSET : Set.S
 module QSET : Set.S
+module GDSET : Set.S
 
 (* Hashtable for mapping DESTINATIONS to SUBSCRIBERS *)
 module H = Hashtbl
@@ -33,7 +34,8 @@ type state = {
   mutable topics : TOPICSET.t;
   mutable user_map : (string,connection) H.t;
   mutable map : (string,CSET.t) H.t;
-  mutable map_msg : (string, MSET.t) H.t
+  mutable map_msg : (string, MSET.t) H.t;
+  mutable map_game_data : (string, GDSET.t) H.t
 }
 
 
@@ -50,6 +52,8 @@ val handle_connection : CSET.elt -> unit -> 'a Lwt.t
 val handle_subscribe : Protocol.frame -> CSET.elt -> unit Lwt.t
 val handle_unsubscribe : Protocol.frame -> CSET.elt -> unit Lwt.t
 val handle_send : Protocol.frame -> CSET.elt -> unit Lwt.t
+val handle_game_server_side : Protocol.frame -> connection -> unit Lwt.t
+val handle_disconnect : Protocol.frame -> connection -> unit Lwt.t
 
 (*
  * [accept_connection conn] 'accepts' a connection from

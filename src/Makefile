@@ -1,18 +1,14 @@
 #
 # Makefile
 # yqiu, 2016-10-27 18:33
-#
+# ewang, 2016-11-24 6:43
+# sb892, 2016-11-26 19:31
 
 all:
-	# ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix server.byte client.byte protocol.byte
-	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o client.byte run_server.byte
-	# ocamlbuild -use-ocamlfind -classic-display -tag 'syntax(camlp4o)' -package str,lwt.syntax,lwt.unix,lwt client.byte protocol.byte
+	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix,ANSITerminal -syntax camlp4o client.byte protocol.byte client_entry.byte server.byte
+  #ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.unix,ANSITerminal client.byte protocol.byte client_entry.byte
+  #ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o client.byte run_server.byte
 
-server:
-	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_server.byte
-
-client:
-	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o client.byte
 
 test:
 	# ocamlbuild use-ocamlfind -pkgs str,lwt,lwt.unix,oUnit test_protocol.byte && ./test_protocol.byte
@@ -24,6 +20,10 @@ indent: *.ml
 
 clean:
 	ocamlbuild -clean
+
+client:
+	ocamlbuild -pkgs str,lwt,lwt.unix,ANSITerminal client_entry.byte && ./client_entry.byte
+
 
 
 # vim:ft=make

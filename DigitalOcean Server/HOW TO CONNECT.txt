@@ -1,0 +1,14 @@
+Guide to ssh for our server
+
+eval `ssh-agent -s`
+ssh-add /path/to/repo/Final\ Project/DigitalOcean\ Server/key
+
+Note:
+if this throws an error about wrong permissions, try
+sudo chmod 600 key
+sudo chmod 600 key.pub
+
+Now to connect -
+ssh root@162.243.63.41
+cd ClubOcaml
+You are now in the server local repo of our repository!

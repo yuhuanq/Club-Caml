@@ -20,6 +20,8 @@ type command = | SEND
                | RECEIPT
                | ERROR
                | INFO
+               | GAME
+               | GAME_RESP
 
 (* Stomp Frame representation type *)
 type frame = {
@@ -88,3 +90,7 @@ val make_message     : string -> string -> string -> string -> frame
 val make_error       : string -> string -> frame
 
 val make_info : (string * string) list -> frame
+
+val make_game        : string -> string -> string -> frame
+
+val make_game_resp   : string -> string -> string -> frame

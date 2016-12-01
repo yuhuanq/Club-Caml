@@ -1,6 +1,7 @@
 (*
  * server.ml
  * Copyright (C) 2016 yqiu <yqiu@f24-suntzu>
+ *                    Byungchan Lim <bl458@cornell.edu>
  *
  * Distributed under terms of the MIT license.
 *)
@@ -10,14 +11,27 @@
  *   server
  *)
 
+(* Reminder:
+1. Do I need to implement execute_game_cmd function with try_lwt and
+lwt operations? Or is just a simple try fine?
+2. Need to finish implementing flushing in server *)
+
 open Lwt
 open Protocol
+open Games
 
 let (>>|) = (>|=)
 
 (* Anonymous bind:
  * syntactic sugar from Lwt.syntax but Merlin doesn't recognize..so manually *)
 let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun () -> f)
+
+(* Game data for a single ongoing game. *)
+type game_data = {
+  mutable gstate : Games.game_state;
+  players : string * string (* This type can change to string list if we
+    implement games with more than 2 players. *)
+}
 
 type connection = {
   input      : Lwt_io.input_channel;
@@ -28,7 +42,8 @@ type connection = {
 }
 
 type message = {
-  id : float; (* The timestamp of the message. Unique identifier for messages with the same destination. *)
+  id : float; (* The timestamp of the message.
+    Unique identifier for messages with the same destination. *)
   conn : connection;
   content : string
 }
@@ -62,6 +77,12 @@ struct
   let compare = Pervasives.compare
 end)
 
+module GDSET = Set.Make(
+struct
+  type t = game_data
+  let compare v1 v2 = Pervasives.compare v1.players v2.players
+end)
+
 (* Hashtable for mapping DESTINATIONS to SUBSCRIBERS *)
 module H = Hashtbl
 
@@ -71,7 +92,8 @@ type state = {
   (* mutable queues : QSET.t; *)
   mutable user_map : (string,connection) H.t;
   mutable map : (string,CSET.t) H.t;
-  mutable map_msg : (string, MSET.t) H.t
+  mutable map_msg : (string, MSET.t) H.t;
+  mutable map_game_data : (string, GDSET.t) H.t
 }
 
 let persist_topics =
@@ -94,6 +116,7 @@ let state = {
   (* queues = QSET.empty; *)
   map = H.create 10;
   map_msg = H.create 20;
+  map_game_data = H.create 20;
 }
 
 (* [clean_state] resets the state to default values *)
@@ -106,6 +129,9 @@ let clean_state () =
   List.iter (fun elt -> H.add state.map elt CSET.empty) persist_topics;
   state.map_msg <- H.create 20;
   List.iter (fun elt -> H.add state.map_msg elt MSET.empty) persist_topics;
+  state.map_game_data <- H.create 20;
+  List.iter (fun elt -> H.add state.map_game_data elt GDSET.empty)
+    persist_topics;
   ()
 
 (* make server listen on 127.0.0.1:9000 *)
@@ -192,6 +218,7 @@ let handle_subscribe frame conn =
     let conns = H.find state.map topic in
     let conns' = CSET.add conn' conns in
     H.replace state.map topic conns';
+    let _=print_endline (conn.username ^ " subscribed to " ^ topic) in
     Lwt_log.info (conn.username ^ " subscribed to " ^ topic) >>
     return_unit
   with Not_found ->
@@ -199,8 +226,12 @@ let handle_subscribe frame conn =
     state.topics <- TOPICSET.add topic state.topics;
     let conns = CSET.add conn' CSET.empty in
     let msgs = MSET.empty in
+    let game_data_set = GDSET.empty in
     H.add state.map topic conns;
     H.add state.map_msg topic msgs;
+    H.add state.map_game_data topic game_data_set;
+    let _=print_endline ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "
+                   subscribed to " ^ topic) in
     Lwt_log.info ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "
                    subscribed to " ^ topic) >>
     return ()
@@ -228,7 +259,7 @@ let handle_unsubscribe frame conn =
       ignore_result (Lwt_log.info ("unsubscribed " ^ conn.username ^ " from " ^
                                    topic));
       let left_message = Protocol.make_message topic "BROKER" (string_of_float
-                                                                 (Unix.gettimeofday ())) (conn.username ^ " has left the room.") in
+        (Unix.gettimeofday ())) (conn.username ^ " has left the room.") in
       let send_fun conn = ignore_result (Protocol.send_frame left_message
                                            conn.output) in
       CSET.iter send_fun conns';
@@ -269,6 +300,56 @@ let handle_disconnect frame conn =
      return ()
   )
 
+(* [execute_game_cmd game_cmd topic players] updates map_game_data which
+ * stores data for all games in each room based on the string [game_cmd] and
+ * returns a string representation of the updated game state. *)
+let execute_game_cmd game_cmd topic players =
+  let game_data_set = H.find state.map_game_data topic in (* When debugging, check here *)
+  (* In line 308, there is either 0 or 1 game_data left in game_data_set after
+  filtering. *)
+  let game_data_set_filtered = GDSET.filter (fun gd ->
+    if gd.players = players
+      then true
+    else false) game_data_set in
+  try
+  let game_data = GDSET.choose game_data_set_filtered in (* When debugging,
+    check length of game_data_set_filtered is 0 or 1. If not, bad code. *)
+  let game_cmd = String.lowercase_ascii (String.trim game_cmd) in
+  let updated_state = Games.give_updated_game_state game_cmd game_data.gstate in
+  Games.game_state_to_string updated_state
+  with Not_found ->
+    (* Is designed so Not_found only happens when using GDSET.choose. *)
+    let game_data = {
+      gstate = Games.start_game ();
+      players = players
+    } in
+    let game_data_set' = GDSET.add game_data game_data_set in
+    H.replace state.map_game_data topic game_data_set';
+    Games.game_state_to_string game_data.gstate
+
+(* [handle_game_server frame conn] makes server handle a GAME frame sent from
+ * client. Based on the game command, it updates the internal data structure
+ * game_data and if successful, sends a game_resp frame to the
+ * destination/chat room.
+ * (Similar to how playing chess on FB chat works) *)
+let handle_game_server_side frame conn =
+  let topic = Protocol.get_header frame "destination" in
+  let sender = Protocol.get_header frame "sender" in
+  let game_msg = frame.body in
+  let idx_of_space = String.index game_msg ' ' in
+  let game_opp = String.sub game_msg 0 idx_of_space in
+  let players = (sender, game_opp) in
+  let game_cmd = String.sub game_msg (idx_of_space+1)
+    ((String.length game_msg) - idx_of_space - 1) in
+  let updated_game_state_str = execute_game_cmd game_cmd topic players in
+  let game_resp_frame = make_game_resp topic updated_game_state_str sender in
+  let conns = H.find state.map topic in
+  let send_fun connelt =
+    ignore_result (Protocol.send_frame game_resp_frame connelt.output) in
+  CSET.iter send_fun conns;
+  Lwt_log.info ("sent a GAME_RESP frame to destination: " ^ topic) >>
+  return_unit
+
 (* [flush_map_message map_message] flushes chat history stored in map_message to
  * the database if the size of the chat history exceeds the limit. It's incomplete
 *)
@@ -282,10 +363,16 @@ let handle_disconnect frame conn =
 
 let handle_frame frame conn =
   match frame.cmd with
-  | SEND -> handle_send frame conn
-  | SUBSCRIBE -> handle_subscribe frame conn
-  | UNSUBSCRIBE -> handle_unsubscribe frame conn
-  | DISCONNECT -> handle_disconnect frame conn
+  | SEND -> let _=print_endline "Received a send frame" in
+            handle_send frame conn
+  | SUBSCRIBE -> let _=print_endline "Received a subscribe frame" in
+                 handle_subscribe frame conn
+  | UNSUBSCRIBE -> let _=print_endline "Received an unsubscribe frame" in
+                   handle_unsubscribe frame conn
+  | DISCONNECT -> let _=print_endline "Received a disconnect frame" in
+                  handle_disconnect frame conn
+  | GAME -> let _=print_endline "Received a game frame" in
+            handle_game_server_side frame conn
   | _ -> failwith "invalid client frame"
 
 let rec handle_connection conn () =
@@ -329,8 +416,10 @@ let close_connection conn =
 *)
 let establish_connection ic oc client_id=
   let f fr =
+    let _=print_endline "Received some frame" in
     match fr.cmd with
     | CONNECT ->
+      let _=print_endline ("New connection from " ^ client_id) in
       begin
         (* let reply = make_connected (string_of_int (newi ()) ) in *)
         let reply = {
@@ -374,6 +463,7 @@ let accept_connection (fd, sckaddr) =
       let open Unix in
       string_of_inet_addr inet_addr
     | _ -> "unknown" in
+  let _=print_endline ("client connected of id "^client_id) in
   let ic = Lwt_io.of_fd Lwt_io.Input fd in
   let oc = Lwt_io.of_fd Lwt_io.Output fd in
   establish_connection ic oc client_id
@@ -395,6 +485,7 @@ let create_socket () =
  * accept and treats it with [accept_connection].
 *)
 let create_server () =
+  let _=print_endline "Creating socket\n" in
   let server_socket = create_socket () in
   let rec serve () =
     let client = Lwt_unix.accept server_socket in
@@ -403,7 +494,9 @@ let create_server () =
 
 (* initialize the server *)
 let run_server () =
+  let _=print_endline "Running server\n" in
   clean_state ();
   let serve = create_server () in
   Lwt_main.run @@ serve ()
 
+let ()=run_server ()

@@ -1,6 +1,7 @@
 (*
  * protocol.ml
  * Copyright (C) 2016 yqiu <yqiu@f24-suntzu>
+ *                    Byungchan Lim <bl458@cornell.edu>
  *
  * Distributed under terms of the MIT license.
 *)
@@ -21,6 +22,8 @@ type command = | SEND
                | RECEIPT
                | ERROR
                | INFO
+               | GAME
+               | GAME_RESP
 
 type frame = {
   cmd     : command;
@@ -43,6 +46,8 @@ let str_of_cmd = function
   | RECEIPT     -> "RECEIPT"
   | ERROR       -> "ERROR"
   | INFO        -> "INFO"
+  | GAME        -> "GAME"
+  | GAME_RESP   -> "GAME_RESP"
 
 let cmd_of_str = function
   | "SEND"        -> SEND
@@ -58,6 +63,8 @@ let cmd_of_str = function
   | "MESSAGE"     -> MESSAGE
   | "RECEIPT"     -> RECEIPT
   | "ERROR"       -> ERROR
+  | "GAME"        -> GAME
+  | "GAME_RESP"   -> GAME_RESP
   | _             -> failwith "illegal cmd string"
 
 let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun () -> f)
@@ -258,3 +265,16 @@ let make_info headers =
     headers = headers;
     body    = ""}
 
+let make_game dest game_cmd sender =
+  { cmd = GAME;
+    headers = ["destination", dest;
+               "sender", sender;
+               "content-length",string_of_int (String.length game_cmd)];
+    body = game_cmd }
+
+let make_game_resp dest game_str sender =
+  { cmd = GAME_RESP;
+    headers = ["destination", dest;
+               "sender", sender;
+               "content-length",string_of_int (String.length game_str)];
+    body = game_str }
