@@ -44,7 +44,7 @@ let send_query s (id : string option) =
   match id with
   | None ->
       let params = ["botid",[!botid];"input",[s]] in
-      Client.post_form params (Uri.of_string api_url) >>= fun (resp,body) ->
+      Cohttp_lwt_unix.Client.post_form params (Uri.of_string api_url) >>= fun (resp,body) ->
       let code = resp |> Response.status |> Code.code_of_status in
       Printf.printf "Response code: %d\n" code;
       Printf.printf "Headers: %s\n" (resp |> Response.headers |> Header.to_string);
@@ -55,7 +55,7 @@ let send_query s (id : string option) =
       (* body *)
   | Some cid ->
       let params = ["botid",[!botid];"input",[s];"custid",[cid]] in
-      Client.post_form params (Uri.of_string api_url) >>= fun (resp,body) ->
+      Cohttp_lwt_unix.Client.post_form params (Uri.of_string api_url) >>= fun (resp,body) ->
       let code = resp |> Response.status |> Code.code_of_status in
       Printf.printf "Response code: %d\n" code;
       Printf.printf "Headers: %s\n" (resp |> Response.headers |> Header.to_string);

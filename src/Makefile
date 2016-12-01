@@ -18,6 +18,9 @@ client:
 	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_client.byte
 	mv run_client.byte camlclient
 
+chatbot:
+	ocamlbuild -use-ocamlfind -pkgs xml-light,lwt,lwt.syntax,lwt.unix,cohttp,cohttp.lwt -syntax camlp4o chatbot.byte
+
 test:
 	# ocamlbuild use-ocamlfind -pkgs str,lwt,lwt.unix,oUnit test_protocol.byte && ./test_protocol.byte
 	# doesn't work atm without runner sequential..............
