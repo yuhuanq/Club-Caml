@@ -1,0 +1,3 @@
+PKG lwt lwt.syntax lwt.unix cohttp cohttp.lwt cohttp.lwt-core xml-light
+S .
+B _build

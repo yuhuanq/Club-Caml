@@ -2,7 +2,7 @@
 # Makefile
 
 all:
-	ocamlbuild -use-ocamlfind -pkgs lwt,lwt.syntax,lwt.unix,cohttp -syntax camlp4o chatbot.byte
+	ocamlbuild -use-ocamlfind -pkgs xml-light,lwt,lwt.syntax,lwt.unix,cohttp,cohttp.lwt -syntax camlp4o chatbot.byte
 
 indent: *.ml
 	for mlfile in $^; do ocp-indent -i --syntax lwt $$mlfile; done
