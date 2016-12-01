@@ -1,39 +1,15 @@
 (*
  * server.ml
  * Copyright (C) 2016 yqiu <yqiu@f24-suntzu>
- *                    Byungchan Lim <bl458@cornell.edu>
+
  *
  * Distributed under terms of the MIT license.
 *)
 
-(* Reminder:
-1. Need to finish implementing flushing in server
-2. When game ends? *)
 
-(* To keep track of the stuff I'm doing, I am writing this. Will erase
-once I am done with games and DB. *)
-(* How Game works (Done except step 5)
-1. Command starting with #game is written on repl
-2. Client makes a game frame containing the command's information and
-sends it to server
-3. Server accepts the game frame, updates its internal data structure containing
-data for all games that are currently being played.
-4. Server makes a game_resp frame containing a string representation
-of the updated game state and sends it to client
-5. Client accepts the game_resp frame and prints the game state on the user's
-terminal using the string representation of the game state in game_resp frame.
-*)
-
-(* How Database works:
-2. Client makes a DATA frame containing the command's information and sends it
-to server
-3. Server accepts DATA frame. If DATA frame requests less than the number of
-units of data that server has stored in its internal data structure, then
-*)
 
 open Lwt
 open Protocol
-open Games
 
 let (>>|) = (>|=)
 
@@ -41,12 +17,6 @@ let (>>|) = (>|=)
  * syntactic sugar from Lwt.syntax but Merlin doesn't recognize..so manually *)
 let (>>) (dt : unit Lwt.t) f = dt >>= (fun () -> f)
 
-(* Game data for a single ongoing game. *)
-type game_data = {
-  mutable gstate : Games.game_state;
-  players : string * string (* This type can change to string list if we
-    implement games with more than 2 players. *)
-}
 
 type connection = {
   input      : Lwt_io.input_channel;
@@ -56,23 +26,14 @@ type connection = {
   username   : string
 }
 
-type message = {
-  id : float; (* The timestamp of the message.
-    Unique identifier for messages with the same destination. *)
-  conn : connection;
-  content : string
-}
+
 
 module CSET = Set.Make(struct
     type t = connection
     let compare v1 v2 = Pervasives.compare v1.username v2.username
   end)
 
-module MSET = Set.Make(
-struct
-  type t = message
-  let compare v1 v2 = Pervasives.compare v1.id v2.id
-end)
+
 
 module USERSET = Set.Make(
 struct
@@ -92,11 +53,7 @@ struct
   let compare = Pervasives.compare
 end)
 
-module GDSET = Set.Make(
-struct
-  type t = game_data
-  let compare v1 v2 = Pervasives.compare v1.players v2.players
-end)
+
 
 (* Hashtable for mapping DESTINATIONS to SUBSCRIBERS *)
 module H = Hashtbl
@@ -106,9 +63,8 @@ type state = {
   mutable topics : TOPICSET.t;
   (* mutable queues : QSET.t; *)
   mutable user_map : (string,connection) H.t;
-  mutable map : (string,CSET.t) H.t;
-  mutable map_msg : (string, MSET.t) H.t;
-  mutable map_game_data : (string, GDSET.t) H.t
+
+
 }
 
 let persist_topics =
@@ -130,8 +86,6 @@ let state = {
   user_map = H.create 100;
   (* queues = QSET.empty; *)
   map = H.create 10;
-  map_msg = H.create 20;
-  map_game_data = H.create 20;
 }
 
 (* [clean_state] resets the state to default values *)
@@ -142,9 +96,6 @@ let clean_state () =
   state.user_map <- H.create 100;
   state.map <- H.create 20;
   List.iter (fun elt -> H.add state.map elt CSET.empty) persist_topics;
-  state.map_msg <- H.create 20;
-  List.iter (fun elt -> H.add state.map_msg elt MSET.empty) persist_topics;
-  state.map_game_data <- H.create 20;
   List.iter (fun elt -> H.add state.map_game_data elt GDSET.empty)
     persist_topics;
   ()
@@ -187,10 +138,6 @@ let handle_send_topic frame conn =
   let mid = string_of_float (Unix.gettimeofday ()) in
   let conns = H.find state.map topic in
   let message_frame = Protocol.make_message topic mid conn.username msg in
-  let msg_obj = {id = float_of_string mid; conn = conn; content = msg} in
-  let msg_objs = H.find state.map_msg topic in
-  let msg_objs' = MSET.add msg_obj msg_objs in
-  H.replace state.map_msg topic msg_objs';
   let send_fun connelt =
     ignore_result (Protocol.send_frame message_frame connelt.output) in
   CSET.iter send_fun conns;
@@ -247,11 +194,7 @@ let handle_subscribe frame conn =
     (* if nonexisting topic, create  it and sub conn to it  *)
     state.topics <- TOPICSET.add topic state.topics;
     let conns = CSET.add conn' CSET.empty in
-    let msgs = MSET.empty in
-    let game_data_set = GDSET.empty in
     H.add state.map topic conns;
-    H.add state.map_msg topic msgs;
-    H.add state.map_game_data topic game_data_set;
     let _=print_endline ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "
                    subscribed to " ^ topic) in
     Lwt_log.info ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "
@@ -322,66 +265,6 @@ let handle_disconnect frame conn =
      (* terminate the thread now with exn *)
      fail End_of_file
 
-(* [execute_game_cmd game_cmd topic players] updates map_game_data which
- * stores data for all games in each room based on the string [game_cmd] and
- * returns a string representation of the updated game state. *)
-let execute_game_cmd game_cmd topic players =
-  let game_data_set = H.find state.map_game_data topic in (* When debugging, check here *)
-  (* In line 308, there is either 0 or 1 game_data left in game_data_set after
-  filtering. *)
-  let game_data_set_filtered = GDSET.filter (fun gd ->
-    if gd.players = players
-      then true
-    else false) game_data_set in
-  try
-  let game_data = GDSET.choose game_data_set_filtered in (* When debugging,
-    check length of game_data_set_filtered is 0 or 1. If not, bad code. *)
-  let game_cmd = String.lowercase_ascii (String.trim game_cmd) in
-  let updated_state = Games.give_updated_game_state game_cmd game_data.gstate in
-  Games.game_state_to_string updated_state
-  with Not_found ->
-    (* Is designed so Not_found only happens when using GDSET.choose. *)
-    let game_data = {
-      gstate = Games.start_game ();
-      players = players
-    } in
-    let game_data_set' = GDSET.add game_data game_data_set in
-    H.replace state.map_game_data topic game_data_set';
-    Games.game_state_to_string game_data.gstate
-
-(* [handle_game_server frame conn] makes server handle a GAME frame sent from
- * client. Based on the game command, it updates the internal data structure
- * game_data and if successful, sends a game_resp frame to the
- * destination/chat room.
- * (Similar to how playing chess on FB chat works) *)
-let handle_game_server_side frame conn =
-  let topic = Protocol.get_header frame "destination" in
-  let sender = Protocol.get_header frame "sender" in
-  let game_msg = frame.body in
-  let idx_of_space = String.index game_msg ' ' in
-  let game_opp = String.sub game_msg 0 idx_of_space in
-  let players = (sender, game_opp) in
-  let game_cmd = String.sub game_msg (idx_of_space+1)
-    ((String.length game_msg) - idx_of_space - 1) in
-  let updated_game_state_str = execute_game_cmd game_cmd topic players in
-  let game_resp_frame = make_game_resp topic updated_game_state_str sender in
-  let conns = H.find state.map topic in
-  let send_fun connelt =
-    ignore_result (Protocol.send_frame game_resp_frame connelt.output) in
-  CSET.iter send_fun conns;
-  Lwt_log.info ("sent a GAME_RESP frame to destination: " ^ topic) >>
-  return_unit
-
-(* [flush_map_message map_message] flushes chat history stored in map_message to
- * the database if the size of the chat history exceeds the limit. It's incomplete
-*)
-(* let flush_map_message map_message limit =
-   let helper topic msgset =
-   if List.length (MSET.elements msgset) >= limit
-   then (* flush; *) ignore_result (Lwt_log.info ("flushing to disk: " ^ topic))
-   else () in
-   H.iter helper map_message;
-   return () *)
 
 let handle_frame frame conn =
   print_endline "in handle frame";
@@ -398,8 +281,6 @@ let handle_frame frame conn =
                   handle_unsubscribe frame conn
   | DISCONNECT -> Lwt_log.info "disconnecting a client" >>= fun _ ->
                   handle_disconnect frame conn
-  | GAME -> let _=print_endline "Received a game frame" in
-            handle_game_server_side frame conn
   | _ -> failwith "invalid client frame"
 
 let handle_connection conn () =
