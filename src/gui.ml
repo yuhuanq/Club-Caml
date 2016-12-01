@@ -20,7 +20,7 @@ let users = [Some "Eric Wang";Some "Somrita42";
              Some "bcForLife";Some "yuhuan_vim"]
 
 (*See GObject.data_conv*)
-let stringList_conv =
+let string_list_conv =
   let open Gobject in
   {kind=`STRING;
    proj=(fun x -> match x with
@@ -31,36 +31,36 @@ let stringList_conv =
                  |None -> `STRING (None) )
   }
 
-let userList = GTree.store_of_list stringList_conv users
+let userList = GTree.store_of_list string_list_conv users
 
 let tag =
   let temp = GText.tag ~name:"msg_id_tag"() in
   temp#set_property (`WEIGHT (`BOLD));temp
 
-let castedTag = tag#as_tag
+let casted_tag = tag#as_tag
 
-let tagTable =
-  let initTagTable = GText.tag_table () in
-  initTagTable#add castedTag;initTagTable
+let tag_table =
+  let init_tag_table = GText.tag_table () in
+  init_tag_table#add casted_tag;init_tag_table
 
-let chatBuffer = GText.buffer ~tag_table:tagTable
+let chat_buffer = GText.buffer ~tag_table:tag_table
                               ~text:"Welcome to Club Caml!\n" ()
 
 (*the vertical scrollbar*)
 let adjustment = GData.adjustment ()
 
 (*---------------------Useful functions-----------------------*)
-(*[msgInsert identifier msg] inserts string message into the chat.
+(*[msg_insert identifier msg] inserts string message into the chat.
  *Format of identifier string is "10:11 PM] <Eric Wang>" *)
-let msgInsert identifier msg =
-  chatBuffer#insert ~iter:chatBuffer#end_iter ~tags:[tag]
+let msg_insert identifier msg =
+  chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[tag]
                     identifier;
-  chatBuffer#insert ~iter:chatBuffer#end_iter (msg^("\n"));
+  chat_buffer#insert ~iter:chat_buffer#end_iter (msg^("\n"));
   adjustment#set_value (adjustment#upper)
 
-let clearChat () =
-  chatBuffer#delete (chatBuffer#get_iter `START) chatBuffer#end_iter;
-  chatBuffer#insert "Welcome to Club Caml!\n"
+let clear_chat () =
+  chat_buffer#delete (chat_buffer#get_iter `START) chat_buffer#end_iter;
+  chat_buffer#insert "Welcome to Club Caml!\n"
 
 
 
@@ -76,40 +76,40 @@ let main () =
   ignore(window#connect#destroy ~callback:Main.quit);
 
   (*About Dialog*)
-  let aboutDialog () =
+  let about_dialog () =
     let authors = ["Yuhuan Qiu";"Eric Wang";"Somrita Banerjee";"Byungchan Lim"]
     in
     let license = "Distributed under terms of the MIT license." in
     let version = "Alpha 0.1" in
     let copyright = "2016" in
-    let aboutPopup = GWindow.about_dialog ~authors:authors ~license:license
+    let about_popup = GWindow.about_dialog ~authors:authors ~license:license
                         ~version:version ~copyright:copyright
                         ~name:"Club Caml" ()
     in
-    ignore(aboutPopup#connect#response
-      ~callback:(fun about ->aboutPopup#misc#hide ()));
-    aboutPopup#show in
+    ignore(about_popup#connect#response
+      ~callback:(fun about -> about_popup#misc#hide ()));
+    about_popup#show in
 
   (*IP Address add server dialog window - Event Handler*)
   let ipPrompt () =
-    let ipAddrPrompt = GWindow.dialog ~title:"Enter IP Address of server"
+    let ip_addr_prompt = GWindow.dialog ~title:"Enter IP Address of server"
                                       ~width:400 ~height:100 () in
-    let ipEntry = GEdit.entry ~max_length:50
-                              ~packing:ipAddrPrompt#vbox#add () in
-    let cancelButton = GButton.button ~label:"Cancel"
-                                    ~packing:ipAddrPrompt#action_area#add () in
-    let okButton = GButton.button ~label:"Connect"
-                                  ~packing:ipAddrPrompt#action_area#add () in
-    ignore(cancelButton#connect#clicked
-      ~callback:(fun () -> ipAddrPrompt#misc#hide ()));
-    ignore(okButton#connect#clicked
+    let ip_entry = GEdit.entry ~max_length:50
+                              ~packing:ip_addr_prompt#vbox#add () in
+    let cancel_button = GButton.button ~label:"Cancel"
+                                    ~packing:ip_addr_prompt#action_area#add () in
+    let ok_button = GButton.button ~label:"Connect"
+                                  ~packing:ip_addr_prompt#action_area#add () in
+    ignore(cancel_button#connect#clicked
+      ~callback:(fun () -> ip_addr_prompt#misc#hide ()));
+    ignore(ok_button#connect#clicked
       ~callback:
-       (fun () -> print_endline(ipEntry#text);ipAddrPrompt#misc#hide ()));
-    ipAddrPrompt#show in
+       (fun () -> print_endline(ip_entry#text);ip_addr_prompt#misc#hide ()));
+    ip_addr_prompt#show in
 
   (* Menu bar *)
-  let menubar = GMenu.menu_bar ~packing:vbox#pack () in
-  let factory = new GMenu.factory menubar in
+  let menu_bar = GMenu.menu_bar ~packing:vbox#pack () in
+  let factory = new GMenu.factory menu_bar in
   let accel_group = factory#accel_group in
   let file_menu = factory#add_submenu "File" in
   let view_menu = factory#add_submenu "View" in
@@ -118,25 +118,32 @@ let main () =
   (* File menu *)
   let factory = new GMenu.factory file_menu ~accel_group in
   ignore(factory#add_item "Select Server" ~key:_I ~callback: (ipPrompt ()));
-  ignore(factory#add_item "About" ~callback:(aboutDialog ()));
+  ignore(factory#add_item "About" ~callback:(about_dialog ()));
   ignore(factory#add_item "Quit" ~key:_Q ~callback: Main.quit);
 
   (*View menu*)
   let factory = new GMenu.factory view_menu ~accel_group in
-  ignore(factory#add_item "Clear Chat" ~key:_R ~callback:(clearChat));
+  ignore(factory#add_item "Clear Chat" ~key:_R ~callback:(clear_chat));
+
+  (*chat box and user info PANED*)
+  let chat_and_info = GPack.paned `HORIZONTAL ~packing: vbox#add () in
+  chat_and_info#misc#set_size_request ~height:650 ();
 
   (*Chat box widget*)
-  let scrolledWindow = GBin.scrolled_window ~vadjustment:adjustment
-                                            ~packing:vbox#add () in
-  scrolledWindow#set_hpolicy `NEVER;
-  scrolledWindow#set_vpolicy `AUTOMATIC;
-  scrolledWindow#misc#set_size_request ~height:650 ();
+  let scrolled_window = GBin.scrolled_window ~vadjustment:adjustment
+                                            ~packing:chat_and_info#add () in
+  scrolled_window#set_hpolicy `NEVER;
+  scrolled_window#set_vpolicy `AUTOMATIC;
+  scrolled_window#misc#set_size_request ~height:650 ();
 
-  let chatView = GText.view ~wrap_mode:`WORD ~editable:false
+  let chat_view = GText.view ~wrap_mode:`WORD ~editable:false
                             ~cursor_visible:false
-                            ~packing:scrolledWindow#add () in
+                            ~packing:scrolled_window#add () in
 
-  ignore(chatView#set_buffer chatBuffer);
+  ignore(chat_view#set_buffer chat_buffer);
+
+  (*Users in room stuff*)
+  let usr_window = GBin.scrolled_window ~packing:chat_and_info#add () in
 
 
   (*
@@ -146,34 +153,34 @@ let main () =
   let usrColumn = usrs#add Gobject.Data.string in
   let rightPaneUsrList = GTree.view ~model: *)
 
-  let entryBox = GPack.hbox ~packing:vbox#add () in
+  let entry_box = GPack.hbox ~packing:vbox#add () in
 
   (*User text entry widget*)
   let enter_cb entry () =
     let text = entry#text in
 
     print_endline (text^("\n"));
-    chatBuffer#insert ~iter:chatBuffer#end_iter ~tags:[tag]
+    chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[tag]
                       "[10:32 PM] <Eric Wang> ";
-    chatBuffer#insert ~iter:chatBuffer#end_iter (text^("\n"));
+    chat_buffer#insert ~iter:chat_buffer#end_iter (text^("\n"));
     adjustment#set_value (adjustment#upper); (*keep scrollbar at newest messages*)
     entry#set_text "" (*clear user text entry*)
   in
 
-  let entry = GEdit.entry ~max_length:500 ~packing:entryBox#add () in
+  let entry = GEdit.entry ~max_length:500 ~packing:entry_box#add () in
   ignore(entry#connect#activate ~callback:(enter_cb entry));
   entry#misc#set_size_request ~width:920 ~height:40 () ; (*make button width small*)
 
 
   (* Button *)
-  let sendButton = GButton.button ~relief:`NORMAL
-                              ~packing:entryBox#add () in
-  ignore(sendButton#connect#clicked
+  let send_button = GButton.button ~relief:`NORMAL
+                                   ~packing:entry_box#add () in
+  ignore(send_button#connect#clicked
     ~callback: (fun () -> (enter_cb entry ())));
 
   (*Add send image to button*)
   let _ = GMisc.image ~file:"images/send-button_tiny.png"
-                              ~packing:sendButton#add () in
+                              ~packing:send_button#add () in
   (*start with focus on text entry box*)
   ignore(entry#misc#grab_focus ());
 
