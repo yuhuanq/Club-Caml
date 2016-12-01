@@ -58,7 +58,8 @@ let cmd_of_str = function
   | "MESSAGE"     -> MESSAGE
   | "RECEIPT"     -> RECEIPT
   | "ERROR"       -> ERROR
-  | _             -> failwith "illegal cmd string"
+  | x             -> print_endline x;
+                     failwith "illegal cmd string"
 
 let (>>) (dt : unit Lwt.t) f = dt >>= (fun _ -> f)
 

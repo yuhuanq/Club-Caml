@@ -35,6 +35,9 @@ let (client_channel:output_channel)= null
 let (emptyconn:connection)= {input=Lwt_io.zero; output=Lwt_io.null; topic=None; username=""}
 let cur_connection= ref emptyconn
 
+let update_topic top=
+  (!cur_connection).topic<-Some top
+
 let read_password_and_login ()=
   let ()= ANSITerminal.(print_string [cyan]
             "\nEnter login and password on seperate lines.\n") in
@@ -46,7 +49,6 @@ let read_password_and_login ()=
   let ()=print_string ":" in
   let pass=read_line () in
   let ()=print_string "\n\n" in
-
   (log,pass)
 
 let start_connection login pass servFromChannel servToChannel=
@@ -104,12 +106,11 @@ let handle_change nroom cur_topic=
 let handle_join nroom=
   print_endline ("Attempting to join room "^nroom^"\n");
   let subframe=make_subscribe nroom in
+  update_topic nroom;
   send_frame subframe (!cur_connection).output
 
 let handle_message msg cur_topic=
-  let msgid=string_of_float(Unix.gettimeofday ()) in
-  let sender=(!cur_connection).username in
-  let msgframe= make_message cur_topic msgid sender msg in
+  let msgframe= make_send cur_topic msg in
   send_frame msgframe (!cur_connection).output
 
 (* TODO: handle incoming messages*)
@@ -187,7 +188,7 @@ let main ipstring =
     start_connection login pass ic oc >>= fun () ->
     print_endline "before protocol read_frame in client";
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
-    Protocol.read_frame ic >>= fun fr ->
+    Protocol.read_frame ic >>= f>>= fun fr ->
     repl ()
     (* f >> repl () *)
   (*
