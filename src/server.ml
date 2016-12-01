@@ -10,8 +10,7 @@ open Protocol
 
 let (>>|) = (>|=)
 
-(* Anonymous bind:
- * syntactic sugar from Lwt.syntax but Merlin doesn't recognize..so manually *)
+(* Anonymous bind *)
 let (>>) (dt : unit Lwt.t) f = dt >>= (fun () -> f)
 
 type connection = {
@@ -187,8 +186,6 @@ let handle_send frame conn =
 (* val handle_subscribe : frame -> connection -> unit Lwt.t  *)
 let handle_subscribe frame conn =
   let topic = Protocol.get_header frame "destination" in
-  let _= (Lwt_log.info (conn.username ^ " trying to subscribe to " ^ topic) >>
-  return_unit) in
   let conn' = {conn with topic = Some topic} in
   try_lwt
     let conns = H.find state.map topic in
@@ -204,8 +201,6 @@ let handle_subscribe frame conn =
     let msgs = MSET.empty in
     H.add state.map topic conns;
     H.add state.map_msg topic msgs;
-    let _=print_endline ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "
-                   subscribed to " ^ topic) in
     Lwt_log.info ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "
                    subscribed to " ^ topic) >>
     return ()
@@ -286,21 +281,17 @@ let handle_disconnect frame conn =
    return () *)
 
 let handle_frame frame conn =
-  print_endline "in handle frame";
+  Lwt_log.info "in [handle_frame]" >>
   match frame.cmd with
-  | SEND -> let _=print_endline "Received a send frame" in
+  | SEND -> Lwt_log.info "Recieved a send frame" >>
             handle_send frame conn
-  | SUBSCRIBE ->
-                 (* print_endline "Received a subscribe frame"; *)
-                 Lwt_log.info "Received an subscribe frame" >>= fun _ ->
+  | SUBSCRIBE -> Lwt_log.info "Received an subscribe frame" >>
                  handle_subscribe frame conn
-  | UNSUBSCRIBE ->
-                  (* let _=print_endline "Received an unsubscribe frame" in *)
-                  Lwt_log.info "Received an Unsub farme" >>= fun _ ->
+  | UNSUBSCRIBE -> Lwt_log.info "Received an Unsub farme" >>
                   handle_unsubscribe frame conn
-  | DISCONNECT -> Lwt_log.info "disconnecting a client" >>= fun _ ->
+  | DISCONNECT -> Lwt_log.info "disconnecting a client" >>
                   handle_disconnect frame conn
-  | _ -> failwith "invalid client frame"
+  | _ -> fail (failwith "invalid client frame")
 
 let handle_connection conn () =
   let rec loop () =
@@ -355,7 +346,7 @@ let close_connection conn =
 *)
 let establish_connection ic oc client_id =
   let f fr =
-    let _=print_endline "Received some frame" in
+    print_endline "Received some frame";
     match fr.cmd with
     | CONNECT ->
       print_endline ("New connection from " ^ client_id);
@@ -375,7 +366,6 @@ let establish_connection ic oc client_id =
           let conn = {input = ic; topic = None; output = oc; username = username} in
           state.connections <- CSET.add conn state.connections;
           H.add state.user_map conn.username conn;
-          (* let _ = Protocol.send_frame reply oc in *)
           try_lwt
             Protocol.send_frame reply oc >>=
               fun () ->
@@ -406,7 +396,6 @@ let accept_connection (fd, sckaddr) =
       let open Unix in
       string_of_inet_addr inet_addr
     | _ -> "unknown" in
-  let _=print_endline ("client connected of id "^client_id) in
   let ic = Lwt_io.of_fd Lwt_io.Input fd in
   let oc = Lwt_io.of_fd Lwt_io.Output fd in
   establish_connection ic oc client_id
@@ -428,17 +417,19 @@ let create_socket () =
  * accept and treats it with [accept_connection].
 *)
 let create_server () =
-  let _=print_endline "Creating socket\n" in
+  print_endline "Creating socket\n";
   let server_socket = create_socket () in
   let rec serve () =
-    let client = Lwt_unix.accept server_socket in
-    client >>= accept_connection >>= serve
-  in serve
+    lwt (fd,sockaddr) = Lwt_unix.accept server_socket in
+    accept_connection (fd,sockaddr) >> serve ()
+    (* let client = Lwt_unix.accept server_socket in *)
+    (* client >>= accept_connection >>= serve *)
+  in serve ()
 
 (* initialize the server *)
 let run_server () =
-  let _=print_endline "Running server\n" in
   clean_state ();
   let serve = create_server () in
-  Lwt_main.run @@ serve ()
+  (* Lwt_main.run @@ serve () *)
+  Lwt_main.run @@ serve
 
