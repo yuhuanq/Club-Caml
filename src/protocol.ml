@@ -1,9 +1,10 @@
 (*
  * protocol.ml
  * Copyright (C) 2016 yqiu <yqiu@f24-suntzu>
+ *                    Byungchan Lim <bl458@cornell.edu>
  *
  * Distributed under terms of the MIT license.
- *)
+*)
 
 open Lwt
 
@@ -20,6 +21,9 @@ type command = | SEND
                | MESSAGE
                | RECEIPT
                | ERROR
+               | INFO
+               | GAME
+               | GAME_RESP
 
 type frame = {
   cmd     : command;
@@ -41,6 +45,9 @@ let str_of_cmd = function
   | MESSAGE     -> "MESSAGE"
   | RECEIPT     -> "RECEIPT"
   | ERROR       -> "ERROR"
+  | INFO        -> "INFO"
+  | GAME        -> "GAME"
+  | GAME_RESP   -> "GAME_RESP"
 
 let cmd_of_str = function
   | "SEND"        -> SEND
@@ -56,7 +63,12 @@ let cmd_of_str = function
   | "MESSAGE"     -> MESSAGE
   | "RECEIPT"     -> RECEIPT
   | "ERROR"       -> ERROR
-  | _             -> failwith "illegal cmd string"
+  | "GAME"        -> GAME
+  | "GAME_RESP"   -> GAME_RESP
+  | x             -> print_endline x;
+                     failwith "illegal cmd string"
+
+let (>>) (dt : unit Lwt.t) f = dt >>= (fun _ -> f)
 
 (*
  * [frame_of_buf buf] is a frame record. Given a string [buf] in STOMP format
@@ -69,13 +81,13 @@ let cmd_of_str = function
  * hello queue a
  * ^@" ]
  * is { cmd = SEND; headers = ["destination","/queue/a"]; body = "hello queue a" }
- *)
+*)
 (* val unpack : string -> frame *)
 let unpack buf =
   let sep = Str.regexp "\n" in
   let lst = Str.split sep buf in
   let lst = List.fold_right (fun elt acc -> if elt = "" then acc else elt::acc)
-  lst [] in
+              lst [] in
   let cmd =
     try List.hd lst
     with _ -> failwith "empty str/non STOMP str fed to [unpack buf]" in
@@ -84,10 +96,10 @@ let unpack buf =
       begin match lst with
       | [] -> frame
       | h::t -> if String.contains h ':' then
-        let sep = Str.regexp ":" in
-        let kv = Str.split sep h in
-        inner_helper {frame with headers = frame.headers @ [List.nth kv 0,
-                      List.nth kv 1]} t
+          let sep = Str.regexp ":" in
+          let kv = Str.split sep h in
+          inner_helper {frame with headers = frame.headers @ [List.nth kv 0,
+                                                              List.nth kv 1]} t
         else {frame with body = h}
       end in
     match lst with
@@ -99,7 +111,9 @@ let unpack buf =
 (*
  * [have_cl frame] is true iff frame.cmd := SEND | MESSAGE | ERROR
  * cl stands for content-length header
- *)
+ *
+ * all other frames must not have a body
+*)
 let have_cl frame =
   match frame.cmd with
   | SEND | MESSAGE | ERROR -> true
@@ -109,7 +123,7 @@ let have_cl frame =
 (*
  * [pack frame] is a buffer representation of the STOMP frame.
  * [frame] is a frame record
- *)
+*)
 (* val pack : frame -> Buffer.t *)
 let pack frame =
   let buf = Buffer.create 80 in
@@ -129,80 +143,90 @@ let pack frame =
   ) frame.headers;
   if have_cl frame then
     begin
-    Buffer.add_string buf "content-length";
-    Buffer.add_char buf ':';
-    let len = (List.assoc "content-length" frame.headers) in
-    Buffer.add_string buf (len);
-    Buffer.add_char buf '\n';
+      Buffer.add_string buf "content-length";
+      Buffer.add_char buf ':';
+       let len = (List.assoc "content-length" frame.headers) in
+      Buffer.add_string buf (len);
+      Buffer.add_char buf '\n';
     end
   else ();
   Buffer.add_char buf '\n';
   Buffer.add_string buf frame.body;
-  Buffer.add_char buf '\x00';
+  print_endline ("frame body: " ^ frame.body);
+  Buffer.add_string buf "\x00\n";
   buf
 
-
-let (>>) (dt : unit Lwt.t) (f : unit Lwt.t) = dt >>= (fun () -> f)
 let send_frame frame oc =
+  print_endline "sending a frame";
   let buf = pack frame in
+  print_endline (Buffer.contents buf);
   let payload = Buffer.contents buf in
   Lwt_io.write oc payload >>
   Lwt_io.flush oc
-
-(*let send_frame frame oc =
-  let buf = pack frame in
-  let payload = Buffer.contents buf in
-  ignore (Lwt_io.write oc payload);
-  Lwt_io.flush oc*)
 
 (*
  * [read_to_null ic] reads from input_channel [ic] until the nullbyte \x00
  *
  * val read_to_null ic : Lwt_io.input_channel -> unit Lwt.t
- *)
+*)
 let rec read_to_null ic =
+  print_endline "looping in [read_to_null ic]";
   let f = function
     | "\x00" -> return ()
     | _ -> read_to_null ic in
   Lwt_io.read_line ic >>= f
 
 let read_frame ic =
-  let cmd = Lwt_io.read_line ic in
+  print_endline "starting to read_frame";
+  (* let cmd = Lwt_io.read_line ic in *)
   let rec read_headers acc =
     Lwt_io.read_line ic  >>=
-      (fun s ->
-         match s with
-         (* headers done if empty str *)
-         | "" -> return acc
-         | s ->
-           let sep = Str.regexp ":" in
-           match Str.split sep s with
-           | []    -> read_headers acc
-           | [k;v] -> read_headers ((k,v)::acc)
-           | h::t -> read_headers acc) in
+    (fun s ->
+       match s with
+       (* headers done if empty str *)
+       | "" -> print_endline "done reading headers"; return acc
+       | s ->
+         print_endline ("in reading headers match case: s " ^ s);
+         let sep = Str.regexp ":" in
+         match Str.split sep s with
+         | []    -> read_headers acc
+         | [k;v] -> read_headers ((k,v)::acc)
+         | h::t -> read_headers acc) in
   let final = (fun c ->
+    print_endline ("read cmd " ^ c);
     read_headers [] >>=
-      (fun lst ->
-        try
-          let read_len = List.assoc "content-length" lst in
-          let read_len = int_of_string read_len in
-          let bytebuf = Bytes.create read_len in
-          let _ = Lwt_io.read_into_exactly ic bytebuf read_len 0 in
-          return {cmd = cmd_of_str c; headers = lst ; body = bytebuf }
-        with Not_found ->
+    (fun lst ->
+       try
+         let read_len = List.assoc "content-length" lst in
+         let read_len = int_of_string read_len in
+         let bytebuf = Bytes.create read_len in
+         Lwt_io.read_into_exactly ic bytebuf 0 read_len >>= fun () ->
+         (* print_endline "right before [read_to_null ic in found match case]"; *)
+         lwt (_ : string) = Lwt_io.read_line ic in
+         print_endline "Done reading, just about to returned frame";
+         return {cmd = cmd_of_str c; headers = lst ; body = (Bytes.to_string bytebuf) }
+       with Not_found ->
           (*
-           * if no content-length header then body is empty
-           * and read to the nullbyte
-           *)
-          let _ = read_to_null ic in
-          return {cmd = cmd_of_str c; headers = lst ; body = ""})) in
-  cmd >>= final
+          * if no content-length header then body is empty
+          * and read to the nullbyte
+         *)
+         print_endline "right before [read_to_null ic] in Not_found match case";
+         read_to_null ic >>= fun () ->
+         print_endline "Done reading, just about to returned frame";
+         return {cmd = cmd_of_str c; headers = lst ; body = ""})) in
+  Lwt_io.read_line ic >>= final
 
+(* [get_header frame name]  *)
+let get_header frame name =
+  (* try *)
+  List.assoc name frame.headers
+(* with Not_found -> *)
+(* "" *)
 
 let make_disconnect =
   {cmd    = DISCONNECT;
-  headers = [];
-  body    = "" }
+   headers = [];
+   body    = "" }
 
 let make_send dest msg =
   {cmd     = SEND;
@@ -235,9 +259,10 @@ let make_connected sid =
    headers = ["session",sid];
    body    = "" }
 
-let make_message dest msg mid =
+let make_message dest mid sender msg=
   {cmd     = MESSAGE;
    headers = ["destination",dest;
+              "sender",sender;
               "message-id",mid;
               "content-length",string_of_int (String.length msg)];
    body    = msg }
@@ -248,3 +273,23 @@ let make_error message body =
               "content-length",string_of_int (String.length body)];
    body    = body }
 
+let make_info headers =
+  { cmd     = INFO;
+    headers = headers;
+    body    = ""}
+
+let make_game dest game_cmd sender =
+  { cmd = GAME;
+    headers = ["destination", dest;
+               "sender", sender;
+               "content-length",string_of_int (String.length game_cmd)];
+    body = game_cmd }
+
+let make_game_resp dest game_str sender =
+  { cmd = GAME_RESP;
+    headers = ["destination", dest;
+               "sender", sender;
+               "content-length",string_of_int (String.length game_str)];
+    body = game_str }
+
+(* let make_data  *)

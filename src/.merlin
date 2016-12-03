@@ -3,6 +3,11 @@ PKG oUnit
 PKG lwt.unix
 PKG ANSITerminal
 PKG lablgtk2
+PKG lwt.syntax
+PKG oUnit
+PKG ANSITerminal
+PKG sqlite3
+PKG cohttp cohttp.lwt cohttp.lwt-core xml-light
 
-S . inst
+S .
 B _build

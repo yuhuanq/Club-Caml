@@ -1,5 +1,6 @@
 #directory "_build";;
-#load "str.cma";;
-#load "protocol.cmo";;
 #require "lwt";;
+#require "lwt.syntax";;
+#require "ANSITerminal";;
+#load "str.cma";;
 open Lwt;;

@@ -5,22 +5,35 @@
 # sb892, 2016-11-26 19:31
 
 all:
-	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.unix,ANSITerminal server.byte client.byte protocol.byte client_entry.byte
+	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_server.byte
+	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_client.byte
+	mv run_server.byte camlserver
+	mv run_client.byte camlclient
 
-test:
-	# ocamlbuild use-ocamlfind -pkgs str,lwt,lwt.unix,oUnit test_protocol.byte && ./test_protocol.byte
-	# doesn't work atm without runner sequential..............
-	ocamlbuild -pkgs lwt,lwt.unix,oUnit,str test_protocol.byte && ./test_protocol.byte -runner sequential
-
-clean:
-	ocamlbuild -clean
+server:
+	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_server.byte
+	mv run_server.byte camlserver
 
 client:
-	ocamlbuild -pkgs str,lwt,lwt.unix,ANSITerminal client_entry.byte && ./client_entry.byte
+	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_client.byte
+	mv run_client.byte camlclient
+
+chatbot:
+	ocamlbuild -use-ocamlfind -pkgs xml-light,lwt,lwt.syntax,lwt.unix,cohttp,cohttp.lwt -syntax camlp4o chatbot.byte
 
 gui:
 	ocamlbuild -pkgs lablgtk2 gui.byte && ./gui.byte
 
+test:
+	# ocamlbuild use-ocamlfind -pkgs str,lwt,lwt.unix,oUnit test_protocol.byte && ./test_protocol.byte
+	# doesn't work atm without runner sequential..............
+	ocamlbuild -pkgs lwt,lwt.syntax,lwt.unix,oUnit,str test_protocol.byte && ./test_protocol.byte -runner sequential
+
+indent: *.ml
+	for mlfile in $^; do ocp-indent -i --syntax lwt $$mlfile; done
+
+clean:
+	ocamlbuild -clean
 
 # vim:ft=make
 #
