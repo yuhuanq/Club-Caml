@@ -11,9 +11,6 @@ open GMain
 open GdkKeysyms
 
 
-let locale = GtkMain.Main.init ()
-
-
 (*--------------GTK objects used by other functions & main--------------*)
 (*mockup user list.*)
 let users = [Some "Eric Wang";Some "Somrita42";
@@ -65,7 +62,11 @@ let clear_chat () =
 
 
 (*-----------------MAIN LOOP-----------------*)
-let main () =
+let main () = Lwt_main.run(
+  ignore(GtkMain.Main.init ());
+  Lwt_glib.install ();
+  ignore(Client.main "127.0.0.1");
+  let waiter,wakener = Lwt.wait () in
   let window = GWindow.window ~width:960 ~height:720 ~resizable:false
                               ~title:"Club Caml" () in
 
@@ -73,7 +74,7 @@ let main () =
   window#set_icon (Some icon);
 
   let vbox = GPack.vbox ~packing:window#add () in
-  ignore(window#connect#destroy ~callback:Main.quit);
+  ignore(window#connect#destroy (Lwt.wakeup wakener));
 
   (*About Dialog*)
   let about_dialog () =
@@ -201,7 +202,7 @@ let main () =
   (* Display the windows and enter Gtk+ main loop *)
   window#add_accel_group accel_group;
   window#show ();
-  Main.main ()
 
+  waiter)
 
 let () = main ()
