@@ -190,9 +190,13 @@ let handle_send_topic frame conn =
     let msg_objs = H.find state.map_msg topic in
     let msg_objs' = MSET.add msg_obj msg_objs in
     H.replace state.map_msg topic msg_objs';
-    let send_fun connelt =
-      ignore_result (Protocol.send_frame message_frame connelt.output) in
-    CSET.iter send_fun conns;
+    (*
+     * let send_fun connelt =
+     *   ignore_result (Protocol.send_frame message_frame connelt.output) in
+     * CSET.iter send_fun conns;
+     *)
+    Lwt_list.iter_p (fun conn -> Protocol.send_frame message_frame conn.output)
+    (CSET.elements conns) >>
     Lwt_log.info ("sent a MESSAGE frame to destination: " ^ topic) >>
     return_unit
 
@@ -236,14 +240,12 @@ let handle_send frame conn =
 (* val handle_subscribe : frame -> connection -> unit Lwt.t  *)
 let handle_subscribe frame conn =
   let topic = Protocol.get_header frame "destination" in
-  let _= (Lwt_log.info (conn.username ^ " trying to subscribe to " ^ topic) >>
-  return_unit) in
+  lwt () = Lwt_log.info (conn.username ^ " trying to subscribe to " ^ topic) in
   let conn' = {conn with topic = Some topic} in
   try_lwt
     let conns = H.find state.map topic in
     let conns' = CSET.add conn' conns in
     H.replace state.map topic conns';
-    print_endline (conn.username ^ " subscribed to " ^ topic);
     Lwt_log.info (conn.username ^ " subscribed to " ^ topic) >>
     return_unit
   with Not_found ->
@@ -281,9 +283,13 @@ let handle_unsubscribe frame conn =
                                    topic));
       let left_message = Protocol.make_message topic "BROKER" (string_of_float
         (Unix.gettimeofday ())) (conn.username ^ " has left the room.") in
-      let send_fun conn = ignore_result (Protocol.send_frame left_message
-                                           conn.output) in
-      CSET.iter send_fun conns';
+      (*
+       * let send_fun conn = ignore_result (Protocol.send_frame left_message
+       *                                      conn.output) in
+       * CSET.iter send_fun conns';
+       *)
+      Lwt_list.iter_p (fun conn -> Protocol.send_frame left_message conn.output)
+      (CSET.elements conns') >>
       (* Send a INFO frame with info on the curr. active rooms so that client can *)
       (* choose reconnect to a different room *)
       let info_frame = make_info (gather_info ()) in
@@ -377,23 +383,19 @@ let handle_game frame conn =
     (CSET.elements conns)
 
 let handle_frame frame conn =
-  print_endline "in handle frame";
+  Lwt_log.info "in handle frame" >>
   match frame.cmd with
-  | SEND -> let _=print_endline "Received a send frame" in
+  | SEND -> Lwt_log.info "Received a SEND frame" >>= fun _ ->
             handle_send frame conn
-  | SUBSCRIBE ->
-                 (* print_endline "Received a subscribe frame"; *)
-                 Lwt_log.info "Received an subscribe frame" >>= fun _ ->
+  | SUBSCRIBE -> Lwt_log.info "Received an SUBSCRIBE frame" >>= fun _ ->
                  handle_subscribe frame conn
-  | UNSUBSCRIBE ->
-                  (* let _=print_endline "Received an unsubscribe frame" in *)
-                  Lwt_log.info "Received an Unsub farme" >>= fun _ ->
+  | UNSUBSCRIBE -> Lwt_log.info "Received an UNSUB farme" >>= fun _ ->
                   handle_unsubscribe frame conn
-  | DISCONNECT -> Lwt_log.info "disconnecting a client" >>= fun _ ->
+  | DISCONNECT -> Lwt_log.info "DISCONNECTING a client" >>= fun _ ->
                   handle_disconnect frame conn
-  | GAME -> Lwt_log.info "Received a game frame" >>= fun _ ->
+  | GAME -> Lwt_log.info "Received a GAME frame" >>= fun _ ->
             handle_game frame conn
-  | _ -> failwith "invalid client frame"
+  | _ -> fail (Failure "invalid client frame")
 
 let handle_connection conn () =
   let rec loop () =
@@ -427,10 +429,8 @@ let close_connection conn =
 *)
 let establish_connection ic oc client_id =
   let f fr =
-    let _=print_endline "Received some frame" in
     match fr.cmd with
     | CONNECT ->
-      print_endline ("New connection from " ^ client_id);
       begin
         (* let reply = make_connected (string_of_int (newi ()) ) in *)
         let reply = {
@@ -447,7 +447,6 @@ let establish_connection ic oc client_id =
           let conn = {input = ic; topic = None; output = oc; username = username} in
           state.connections <- CSET.add conn state.connections;
           H.add state.user_map conn.username conn;
-          (* let _ = Protocol.send_frame reply oc in *)
           try_lwt
             Protocol.send_frame reply oc >>=
               fun () ->
@@ -478,7 +477,7 @@ let accept_connection (fd, sckaddr) =
       let open Unix in
       string_of_inet_addr inet_addr
     | _ -> "unknown" in
-  let _=print_endline ("client connected of id "^client_id) in
+  Lwt_log.info ("client connected of id" ^ client_id) >>
   let ic = Lwt_io.of_fd Lwt_io.Input fd in
   let oc = Lwt_io.of_fd Lwt_io.Output fd in
   establish_connection ic oc client_id
