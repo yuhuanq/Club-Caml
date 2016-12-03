@@ -195,7 +195,8 @@ let rec repl () =
     end
   | _ ->
     lwt () = Lwt_log.info "Attempting to send message" in
-    handle_send directive cur_topic >>
+    handle_send directive cur_topic )
+    >>
     lwt () =  Lwt_log.info "Sent a frame" in
     repl ()
 
