@@ -143,8 +143,8 @@ let rec handle_incoming_frames ()=
     | x-> Lwt_log.info ("received a frame of type not expected")
   >>
   Lwt_log.info "Received a frame"
-  >> handle_incoming_frames ()
-
+  >> repl ()
+and
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
@@ -163,7 +163,7 @@ let rec handle_incoming_frames ()=
     loop () in
   loop ()*)
 
-let rec repl () =
+ repl () =
   print_endline "in repl";
   let directive=read_line () in
   let cur_topic=option_to_str ((!cur_connection).topic) in
@@ -204,7 +204,7 @@ let rec repl () =
     handle_send directive cur_topic
   >>
   Lwt_log.info "Sent a frame"
-  >> repl ()
+  >> handle_incoming_frames ()
 
 (*
  * [main () ] creates a socket of type stream in the internet
@@ -233,11 +233,10 @@ let main ipstring =
     start_connection login pass ic oc >>= fun () ->
     print_endline "before protocol read_frame in client";
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
-<<<<<<< HEAD
     Protocol.read_frame ic >>= f>>=
     fun fr ->
-    (lwt x=repl ()
-    and y=handle_incoming_frames () in
+    (lwt y=handle_incoming_frames ()
+    and x=repl () in
     return ())
     (* f >> repl () *)
   (*
@@ -247,7 +246,7 @@ let main ipstring =
    *           "\n\nError. Malformed IP Address.\n"))
    * | _ -> return (print_endline "Some other error")
    *)
-=======
+(*
     Protocol.read_frame ic >>= f >>= fun fr ->
     Lwt.async (handle_connection);
     repl ()
@@ -255,8 +254,7 @@ let main ipstring =
   | Failure _ ->
           return (ANSITerminal.(print_string [red]
             "\n\nError. Malformed IP Address.\n"))
-  | _ -> return (print_endline "Some other error")
->>>>>>> 36456b9711649cfcfdcaf7397b177aa017e0b1e4
+  | _ -> return (print_endline "Some other error")*)
 
 let () = Lwt_log.add_rule "*" Lwt_log.Info
 
