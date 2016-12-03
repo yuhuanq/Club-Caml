@@ -143,8 +143,8 @@ let rec handle_incoming_frames ()=
     | x-> Lwt_log.info ("received a frame of type not expected")
   >>
   Lwt_log.info "Received a frame"
-  >> handle_incoming_frames ()
-
+  >> repl ()
+and
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
@@ -163,7 +163,7 @@ let rec handle_incoming_frames ()=
     loop () in
   loop ()*)
 
-let rec repl () =
+ repl () =
   print_endline "in repl";
   let directive=read_line () in
   let cur_topic=option_to_str ((!cur_connection).topic) in
@@ -204,7 +204,7 @@ let rec repl () =
     handle_send directive cur_topic
   >>
   Lwt_log.info "Sent a frame"
-  >> repl ()
+  >> handle_incoming_frames ()
 
 (*
  * [main () ] creates a socket of type stream in the internet
@@ -235,8 +235,8 @@ let main ipstring =
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
     Protocol.read_frame ic >>= f>>=
     fun fr ->
-    (lwt x=repl ()
-    and y=handle_incoming_frames () in
+    (lwt y=handle_incoming_frames ()
+    and x=repl () in
     return ())
     (* f >> repl () *)
   (*
