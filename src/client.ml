@@ -143,7 +143,7 @@ let rec handle_incoming_frames ()=
     | x-> Lwt_log.info ("received a frame of type not expected")
   >>
   Lwt_log.info "Received a frame"
-  >> repl ()
+  >> handle_incoming_frames ()
 and
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
@@ -204,7 +204,7 @@ and
     handle_send directive cur_topic
   >>
   Lwt_log.info "Sent a frame"
-  >> handle_incoming_frames ()
+  >> repl ()
 
 (*
  * [main () ] creates a socket of type stream in the internet
