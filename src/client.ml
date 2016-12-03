@@ -45,6 +45,9 @@ let cur_connection= ref emptyconn
 let update_topic top=
   (!cur_connection).topic<-Some top
 
+let remove_topic ()=
+  (!cur_connection).topic<-None
+
 let read_password_and_login ()=
   let ()= ANSITerminal.(print_string [cyan]
                           "\nEnter login and password on seperate lines.\n") in
@@ -77,6 +80,7 @@ let option_to_str s=
   |None -> ""
 
 let handle_leave cur_topic=
+  lwt ()=Lwt_log.info ("Current room is "^(option_to_str (!cur_connection).topic)) in
   let unsubframe=make_unsubscribe cur_topic in
   let f=function
     |x->
@@ -97,6 +101,7 @@ let handle_quit () =
 let handle_change nroom cur_topic=
   let unsubframe=make_unsubscribe cur_topic in
   let subframe=make_subscribe nroom in
+  let ()=update_topic nroom in
   let f=function
     |x->
       match x.cmd with
@@ -112,7 +117,7 @@ let handle_change nroom cur_topic=
 let handle_join nroom=
   print_endline ("Attempting to join room "^nroom^"\n");
   let subframe = make_subscribe nroom in
-  update_topic nroom;
+  let ()=update_topic nroom in
   send_frame subframe (!cur_connection).output
 
 let handle_send msg cur_topic=
@@ -157,10 +162,10 @@ let rec handle_incoming_frames ()=
 
 
 let rec repl () =
-  print_endline "in repl";
+  lwt ()=Lwt_log.info "in repl" in
   lwt directive=Lwt_io.read_line Lwt_io.stdin in
   let cur_topic=option_to_str ((!cur_connection).topic) in
-  let firstletter=directive.[0] in
+  (let firstletter=directive.[0] in
   match firstletter with
   |'#'->
     begin
@@ -177,7 +182,6 @@ let rec repl () =
           |"#change"->
             let nroom=String.sub directive 8 ((String.length directive)-8) in
             handle_change nroom cur_topic
-            >> repl ()
           |_->
             let partOfDir2=String.sub directive 0 5 in
             begin
@@ -186,18 +190,17 @@ let rec repl () =
                 let nroom=String.sub directive 6 ((String.length directive)-6) in
                 print_endline ("joining " ^ nroom);
                 handle_join nroom
-                >> repl ()
               |"#game" ->
                 let game_msg=String.sub directive 6 ((String.length directive)-6) in
                 handle_game_client_side game_msg cur_topic
-                >> repl ()
               | _ -> failwith "invalid # command"
             end
         end
     end
   | _ ->
     lwt ()=Lwt_log.info "Attempting to send message" in
-    handle_send directive cur_topic >>
+    handle_send directive cur_topic )
+    >>
     lwt ()= Lwt_log.info "Sent a frame" in
     repl ()
 

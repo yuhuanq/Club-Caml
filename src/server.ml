@@ -234,6 +234,11 @@ let handle_send frame conn =
       let err = make_error "" "Uh oh. Something Went Wrong!" in
       Protocol.send_frame err conn.output >> return_unit
 
+let option_to_str s=
+  match s with
+  |Some x-> x
+  |None -> "None"
+
 (*
  * [handle_subscribe] handles a SUBSCRIBE frame. a SUBSCRIBE command is used to
  * register to a listen to a given destination
@@ -253,6 +258,8 @@ let handle_subscribe frame conn =
     Lwt_log.info (conn.username ^ " subscribed to " ^ topic) >>
     let message = Protocol.make_message topic (string_of_float
     (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
+    conn.topic<-Some topic;
+    lwt ()=Lwt_log.info ("Current connection topic "^(option_to_str conn.topic)) in
     Lwt_list.iter_p (fun conn -> Protocol.send_frame message conn.output)
     (CSET.elements conns')
   with Not_found ->
@@ -279,6 +286,9 @@ let handle_subscribe frame conn =
 
 exception Fail_Unsub
 
+
+
+
 (*
  * [handle_unsubscribe] handles a UNSUBSCRIBE frame. a UNSUBSCRIBE command is
  * used to remove an existing subscribtion - to no longer receive messages from
@@ -290,6 +300,8 @@ exception Fail_Unsub
 (* val handle_subscribe : frame -> connection -> unit Lwt.t  *)
 let handle_unsubscribe frame conn =
   let topic = Protocol.get_header frame "destination" in
+  Lwt_log.info ("topic being unsubbed from "^topic)>>
+  Lwt_log.info ("conn's topic is "^ (option_to_str conn.topic))>>
   try_lwt
     match conn.topic with
     | Some s when s = topic ->
