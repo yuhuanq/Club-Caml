@@ -21,7 +21,7 @@ type command = | SEND
                | MESSAGE
                | RECEIPT
                | ERROR
-               | INFO
+               | STATS
                | GAME
                | GAME_RESP
 
@@ -45,7 +45,7 @@ let str_of_cmd = function
   | MESSAGE     -> "MESSAGE"
   | RECEIPT     -> "RECEIPT"
   | ERROR       -> "ERROR"
-  | INFO        -> "INFO"
+  | STATS       -> "STATS"
   | GAME        -> "GAME"
   | GAME_RESP   -> "GAME_RESP"
 
@@ -273,8 +273,8 @@ let make_error message body =
               "content-length",string_of_int (String.length body)];
    body    = body }
 
-let make_info headers =
-  { cmd     = INFO;
+let make_stats headers =
+  { cmd     = STATS;
     headers = headers;
     body    = ""}
 
