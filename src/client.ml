@@ -128,6 +128,7 @@ let handle_game_client_side game_msg cur_topic =
 
 (* TODO: handle incoming messages*)
 
+
 let rec handle_incoming_frames ()=
   lwt ()=Lwt_log.info "Inside handle_incoming_frames" in
   let ic=(!cur_connection).input in
@@ -144,6 +145,7 @@ let rec handle_incoming_frames ()=
   Lwt_log.info "Received a frame"
   >> handle_incoming_frames ()
 
+
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
    [#join nroom] joins a new room (requires not in any room currently)
@@ -153,6 +155,13 @@ let rec handle_incoming_frames ()=
  Note: only change, leave, join, quit, game implemented
  Note: for tictactoe, string game_msg is in the form:
   opponent_name ^ " " ^ game_cmd *)
+
+(*let handle_connection () =
+  let rec loop () =
+    lwt frame = Protocol.read_frame (!cur_connection).input in
+    handle_incoming_frame frame >>
+    loop () in
+  loop ()*)
 
 let rec repl () =
   print_endline "in repl";
@@ -203,12 +212,11 @@ let rec repl () =
  *)
 
 let main ipstring =
-  (* try_lwt *)
+  try_lwt
     let inet_addr : Lwt_unix.inet_addr = Unix.inet_addr_of_string ipstring in
     let addr = Lwt_unix.ADDR_INET (inet_addr,port) in
     let sock = Lwt_unix.socket Lwt_unix.PF_INET Lwt_unix.SOCK_STREAM 0 in
     (*Do not need to bind, it is implicitly done - google this*)
-    print_endline "right before lwt_unix.connect sock addr";
     lwt () = Lwt_unix.connect sock addr in
     (* >>= fun () -> *)
     let oc = Lwt_io.of_fd Lwt_io.Output sock in
@@ -218,12 +226,14 @@ let main ipstring =
     let f=fun x->
             match x.cmd with
             | CONNECTED->
-                return (print_endline "CONNECTED frame rec")
-            | _-> return (print_endline "expected CONNECTED frame")
+                Lwt_log.info "recieved CONNECTED frame from server"
+            | _->
+                Lwt_log.info "expected a CONNECTED frame but got something else"
     in
     start_connection login pass ic oc >>= fun () ->
     print_endline "before protocol read_frame in client";
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
+<<<<<<< HEAD
     Protocol.read_frame ic >>= f>>=
     fun fr ->
     (lwt x=repl ()
@@ -237,5 +247,16 @@ let main ipstring =
    *           "\n\nError. Malformed IP Address.\n"))
    * | _ -> return (print_endline "Some other error")
    *)
+=======
+    Protocol.read_frame ic >>= f >>= fun fr ->
+    Lwt.async (handle_connection);
+    repl ()
+  with
+  | Failure _ ->
+          return (ANSITerminal.(print_string [red]
+            "\n\nError. Malformed IP Address.\n"))
+  | _ -> return (print_endline "Some other error")
+>>>>>>> 36456b9711649cfcfdcaf7397b177aa017e0b1e4
 
 let () = Lwt_log.add_rule "*" Lwt_log.Info
+

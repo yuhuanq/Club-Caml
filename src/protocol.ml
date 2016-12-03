@@ -278,17 +278,18 @@ let make_info headers =
     headers = headers;
     body    = ""}
 
-let make_game dest game_cmd sender =
+let make_game dest opp game_cmd =
   { cmd = GAME;
     headers = ["destination", dest;
-               "sender", sender;
+               "opponent",opp;
                "content-length",string_of_int (String.length game_cmd)];
     body = game_cmd }
 
-let make_game_resp dest game_str sender =
+let make_game_message game_str (p1,p2) instructions =
   { cmd = GAME_RESP;
-    headers = ["destination", dest;
-               "sender", sender;
+    headers = ["player1", p1;
+               "player2", p2;
+               "instructions",instructions;
                "content-length",string_of_int (String.length game_str)];
     body = game_str }
 
