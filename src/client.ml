@@ -116,9 +116,10 @@ let handle_join nroom=
   update_topic nroom;
   send_frame subframe (!cur_connection).output
 
-let handle_message msg cur_topic=
-  let msgframe= make_send cur_topic msg in
-  send_frame msgframe (!cur_connection).output
+let handle_send msg cur_topic=
+  let sendframe= make_send cur_topic msg in
+  lwt ()=Lwt_log.info "About to send the sendframe" in
+  send_frame sendframe (!cur_connection).output
 
 let handle_game_client_side game_msg cur_topic =
   let sender=(!cur_connection).username in
@@ -128,6 +129,7 @@ let handle_game_client_side game_msg cur_topic =
 (* TODO: handle incoming messages*)
 
 let rec handle_incoming_frames ()=
+  lwt ()=Lwt_log.info "Inside handle_incoming_frames" in
   let ic=(!cur_connection).input in
   Protocol.read_frame ic>>=
   fun x->
@@ -138,6 +140,9 @@ let rec handle_incoming_frames ()=
     | INFO -> Lwt_log.info "received INFO frame"
     | GAME_RESP -> Lwt_log.info "received GAME_RESP frame."
     | x-> Lwt_log.info ("received a frame of type not expected")
+  >>
+  Lwt_log.info "Received a frame"
+  >> handle_incoming_frames ()
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
@@ -186,7 +191,8 @@ let rec repl () =
         end
     end
   | _->
-    handle_message directive cur_topic
+    lwt ()=Lwt_log.info "Attempting to send message" in
+    handle_send directive cur_topic
   >>
   Lwt_log.info "Sent a frame"
   >> repl ()
@@ -218,8 +224,11 @@ let main ipstring =
     start_connection login pass ic oc >>= fun () ->
     print_endline "before protocol read_frame in client";
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
-    Protocol.read_frame ic >>= f>>= fun fr ->
-    repl ()
+    Protocol.read_frame ic >>= f>>=
+    fun fr ->
+    (lwt x=repl ()
+    and y=handle_incoming_frames () in
+    return ())
     (* f >> repl () *)
   (*
    * with
