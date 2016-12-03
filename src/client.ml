@@ -1,8 +1,9 @@
 (*
  * client.ml
- * Copyright (C) 2016 sb892 <sb892@cornell.edu> Somrita Banerjee,
-   ew366 <ew366@cornell.edu> Eric Wang
-   bl458 <bl458@cornell.edu> Byungchan Lim
+ * Copyright (C) 2016
+ * sb892 <sb892@cornell.edu> Somrita Banerjee,
+ * ew366 <ew366@cornell.edu> Eric Wang
+ * bl458 <bl458@cornell.edu> Byungchan Lim
  *
  * Distributed under terms of the MIT license.
 *)
@@ -52,7 +53,7 @@ let update_topic top =
 
 let read_password_and_login () =
   ANSITerminal.(print_string [cyan]
-  "\nEnter login and password on seperate lines.\n");
+                  "\nEnter login and password on seperate lines.\n");
   print_string "username: ";
   let log = read_line () in
   print_string "password ";
@@ -111,7 +112,7 @@ let handle_change nroom cur_topic=
       (* TODO: print header to user*)
       |_-> Lwt_io.print "expected STATS frame" in
   send_frame unsubframe (!cur_connection).output >>
-  read_frame (!cur_connection).input >>= f >>
+  (* read_frame (!cur_connection).input >>= f >> *)
   send_frame subframe (!cur_connection).output
 
 
@@ -176,7 +177,7 @@ let rec repl () =
         let partOfDir = String.sub directive 0 7 in
         begin
           match partOfDir with
-          |"#change"->
+          |"#change" ->
             let nroom = String.sub directive 8 ((String.length directive)-8) in
             handle_change nroom cur_topic
             >>repl ()
@@ -184,7 +185,7 @@ let rec repl () =
             let partOfDir2 = String.sub directive 0 5 in
             begin
               match partOfDir2 with
-              |"#join"->
+              |"#join" ->
                 let nroom = String.sub directive 6 ((String.length directive)-6) in
                 print_endline ("joining " ^ nroom);
                 handle_join nroom
@@ -199,8 +200,7 @@ let rec repl () =
     end
   | _ ->
     lwt () = Lwt_log.info "Attempting to send message" in
-    handle_send directive cur_topic )
-    >>
+    handle_send directive cur_topic ) >>
     lwt () =  Lwt_log.info "Sent a frame" in
     repl ()
 
@@ -224,18 +224,16 @@ let main ipstring =
     let ic = Lwt_io.of_fd Lwt_io.Input sock in
     print_endline "right before read pw";
     let (login,pass) = read_password_and_login () in
-    let f=fun x->
+    let f = fun x->
       match x.cmd with
       | CONNECTED->
         Lwt_log.info "recieved CONNECTED frame from server"
       | _->
-        Lwt_log.info "expected a CONNECTED frame but got something else"
-    in
+        Lwt_log.info "expected a CONNECTED frame but got something else" in
     start_connection login pass ic oc >>= fun () ->
     print_endline "before protocol read_frame in client";
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
-    Protocol.read_frame ic >>= f>>=
-    fun fr ->
+    Protocol.read_frame ic >>= f >>= fun fr ->
     Lwt.async handle_connection;
     repl ()
   (*Lwt_log.info "completed both loops?"*)

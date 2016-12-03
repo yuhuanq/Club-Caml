@@ -63,6 +63,7 @@ let cmd_of_str = function
   | "MESSAGE"     -> MESSAGE
   | "RECEIPT"     -> RECEIPT
   | "ERROR"       -> ERROR
+  | "STATS"       -> STATS
   | "GAME"        -> GAME
   | "GAME_RESP"   -> GAME_RESP
   | x             -> print_endline x;
@@ -176,9 +177,15 @@ let rec read_to_null ic =
     | _ -> read_to_null ic in
   Lwt_io.read_line ic >>= f
 
-let rec print_list=function
-[]-> ()
-| (a,b)::l-> print_string a; print_string " ";print_string b; print_string " ,"; print_list l
+let rec print_list = function
+  [] -> ()
+  | (a,b)::l->
+      print_endline "in second matchcase of print_list";
+      print_string a;
+      print_string ":";
+      print_string b;
+      print_string " ,";
+      print_list l
 
 let read_frame ic =
   lwt ()= Lwt_log.info "starting to read_frame" in
@@ -201,13 +208,14 @@ let read_frame ic =
     read_headers [] >>=
     (fun lst ->
        try
-         let ()=print_list lst in
+         print_endline "Protocol: Finished Reading Headers!";
+         let () = print_list lst in
          let read_len = List.assoc "content-length" lst in
         lwt ()=Lwt_log.info ("content length is "^read_len) in
          let read_len = int_of_string read_len in
          let bytebuf = Bytes.create read_len in
          Lwt_io.read_into_exactly ic bytebuf 0 read_len >>= fun () ->
-         (* print_endline "right before [read_to_null ic in found match case]"; *)
+         print_endline "right before [read_to_null ic in found match case]";
          lwt (_ : string) = Lwt_io.read_line ic in
          lwt ()= Lwt_log.info "Done reading, just about to returned frame"in
          return {cmd = cmd_of_str c; headers = lst ; body = (Bytes.to_string bytebuf) }
@@ -221,7 +229,7 @@ let read_frame ic =
          read_to_null ic >>= fun () ->
          lwt ()= Lwt_log.info "Done reading, just about to returned frame" in
          return {cmd = cmd_of_str c; headers = lst ; body = ""})) in
-  Lwt_io.read_line ic >>= final
+    Lwt_io.read_line ic >>= final
 
 (* [get_header frame name]  *)
 let get_header frame name =
