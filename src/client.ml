@@ -81,10 +81,10 @@ let handle_leave cur_topic=
   let f=function
         |x->
           match x.cmd with
-          |INFO-> Lwt_log.info ("INFO frame recvd")>>
+          |STATS -> Lwt_log.info ("STATS frame recvd")>>
           Lwt_log.info ("body of frame recvd: "^x.body)
           (* TODO: print header to user*)
-          |_-> Lwt_log.info "expected INFO frame"
+          |_-> Lwt_log.info "expected STATS frame"
   in
   Protocol.send_frame unsubframe (!cur_connection).output >>
   (read_frame (!cur_connection).input >>= f)
@@ -100,10 +100,10 @@ let handle_change nroom cur_topic=
   let f=function
         |x->
           match x.cmd with
-          |INFO-> Lwt_io.print ("INFO frame recvd")>>
+          |STATS-> Lwt_io.print ("STATS frame recvd")>>
           Lwt_io.print ("body of frame recvd: "^x.body)
           (* TODO: print header to user*)
-          |_-> Lwt_io.print "expected INFO frame"
+          |_-> Lwt_io.print "expected STATS frame"
   in
   send_frame unsubframe (!cur_connection).output >>
   (read_frame (!cur_connection).input >>=f)>>
@@ -138,7 +138,7 @@ let rec handle_incoming_frames ()=
     | MESSAGE-> Lwt_log.info "received MESSAGE frame">>
                 Lwt_log.info ("body of frame recvd: "^x.body)
     | ERROR-> Lwt_log.info "received ERROR frame"
-    | INFO -> Lwt_log.info "received INFO frame"
+    | STATS -> Lwt_log.info "received STATS frame"
     | GAME_RESP -> Lwt_log.info "received GAME_RESP frame."
     | x-> Lwt_log.info ("received a frame of type not expected")
   >>
@@ -233,7 +233,6 @@ let main ipstring =
     start_connection login pass ic oc >>= fun () ->
     print_endline "before protocol read_frame in client";
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
-<<<<<<< HEAD
     Protocol.read_frame ic >>= f>>=
     fun fr ->
     (lwt x=repl ()
@@ -247,16 +246,6 @@ let main ipstring =
    *           "\n\nError. Malformed IP Address.\n"))
    * | _ -> return (print_endline "Some other error")
    *)
-=======
-    Protocol.read_frame ic >>= f >>= fun fr ->
-    Lwt.async (handle_connection);
-    repl ()
-  with
-  | Failure _ ->
-          return (ANSITerminal.(print_string [red]
-            "\n\nError. Malformed IP Address.\n"))
-  | _ -> return (print_endline "Some other error")
->>>>>>> 36456b9711649cfcfdcaf7397b177aa017e0b1e4
 
 let () = Lwt_log.add_rule "*" Lwt_log.Info
 

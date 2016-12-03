@@ -257,17 +257,25 @@ let handle_subscribe frame conn =
     (CSET.elements conns')
   with Not_found ->
     (* if nonexisting topic, create  it and sub conn to it  *)
-    state.topics <- TOPICSET.add topic state.topics;
-    let conns = CSET.add conn' CSET.empty in
-    let msgs = MSET.empty in
-    H.add state.map topic conns;
-    H.add state.map_msg topic msgs;
-    Lwt_log.info ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "
-                   subscribed to " ^ topic) >>
-    let message = Protocol.make_message topic (string_of_float
-    (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
-    Lwt_list.iter_p (fun conn -> Protocol.send_frame message conn.output)
-    (CSET.elements conns)
+    (* TODO: transfer this check and the username len check to client *)
+    if String.length topic > 50 || String.length topic < 1 then
+      let reply = make_error "Invalid room name" "Room names must be between 1
+      and 50 characters." in
+      Protocol.send_frame reply conn.output
+    else
+      begin
+        state.topics <- TOPICSET.add topic state.topics;
+        let conns = CSET.add conn' CSET.empty in
+        let msgs = MSET.empty in
+        H.add state.map topic conns;
+        H.add state.map_msg topic msgs;
+        Lwt_log.info ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "
+                       subscribed to " ^ topic) >>
+        let message = Protocol.make_message topic (string_of_float
+        (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
+        Lwt_list.iter_p (fun conn -> Protocol.send_frame message conn.output)
+        (CSET.elements conns)
+      end
 
 exception Fail_Unsub
 
@@ -302,8 +310,8 @@ let handle_unsubscribe frame conn =
       (CSET.elements conns') >>
       (* Send a INFO frame with info on the curr. active rooms so that client can *)
       (* choose reconnect to a different room *)
-      let info_frame = Protocol.make_info (gather_info ()) in
-      Protocol.send_frame info_frame conn.output >>
+      let stat_frame = Protocol.make_stats (gather_info ()) in
+      Protocol.send_frame stat_frame conn.output >>
       if conns' = CSET.empty then
         begin
           H.replace state.map_msg topic MSET.empty;
@@ -449,25 +457,30 @@ let establish_connection ic oc client_id =
           body = "";
         } in
         let username = List.assoc "login" fr.headers in
-        if H.mem state.user_map username then
-          let reply = make_error "" "Username already taken" in
+        if String.length username > 9 || String.length username < 1 then
+          let reply = make_error "Invalid Nickname"
+           "Nickname must be between 1 to 9 characters long." in
           Protocol.send_frame reply oc >> Lwt_io.abort ic
         else
-          Lwt_log.info ("user " ^ username ^ " has logged in.") >>= fun _ ->
-          let conn = {input = ic; topic = None; output = oc; username = username} in
-          state.connections <- CSET.add conn state.connections;
-          H.add state.user_map conn.username conn;
-          try_lwt
-            Protocol.send_frame reply oc >>=
-              fun () ->
-                Lwt_log.info ("New connection from " ^
-                client_id) >>= fun _ ->
-                Lwt.on_failure (handle_connection conn ())
-                (fun e -> Lwt_log.ign_error (Printexc.to_string e));
-                return_unit
-          with
-          | _ ->
-            close_connection conn
+          if H.mem state.user_map username then
+            let reply = make_error "" "Username already taken" in
+            Protocol.send_frame reply oc >> Lwt_io.abort ic
+          else
+            Lwt_log.info ("user " ^ username ^ " has logged in.") >>= fun _ ->
+            let conn = {input = ic; topic = None; output = oc; username = username} in
+            state.connections <- CSET.add conn state.connections;
+            H.add state.user_map conn.username conn;
+            try_lwt
+              Protocol.send_frame reply oc >>=
+                fun () ->
+                  Lwt_log.info ("New connection from " ^
+                  client_id) >>= fun _ ->
+                  Lwt.on_failure (handle_connection conn ())
+                  (fun e -> Lwt_log.ign_error (Printexc.to_string e));
+                  return_unit
+            with
+            | _ ->
+              close_connection conn
       end
     | _ ->
       let reply = make_error "" "Expected a CONNECT frame" in
