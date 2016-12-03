@@ -185,7 +185,7 @@ let handle_chatbot frame conn =
 
 let handle_send_topic frame conn =
   let topic = Protocol.get_header frame "destination" in
-  if topic = "Chatbot" then handle_chatbot frame conn else
+  if topic = "/topic/Chatbot" then handle_chatbot frame conn else
     let msg = frame.body in
     let mid = string_of_float (Unix.gettimeofday ()) in
     let conns = H.find state.map topic in
