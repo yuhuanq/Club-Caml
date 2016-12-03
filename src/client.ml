@@ -83,16 +83,17 @@ let option_to_str s=
 let handle_leave cur_topic=
   lwt ()=Lwt_log.info ("Current room is "^(option_to_str (!cur_connection).topic)) in
   let unsubframe=make_unsubscribe cur_topic in
-  let f=function
+  (*let f=function
     |x->
       match x.cmd with
       |STATS -> Lwt_log.info ("STATS frame recvd")
         >> Lwt_log.info ("body of frame recvd: "^x.body)
       (* TODO: print header to user*)
       |_-> Lwt_log.info "expected STATS frame"
-  in
-  Protocol.send_frame unsubframe (!cur_connection).output >>
-  read_frame (!cur_connection).input >>= f
+  in*)
+  Protocol.send_frame unsubframe (!cur_connection).output
+  (*>>
+  read_frame (!cur_connection).input >>= f*)
 
 let handle_quit () =
   print_endline "Quitting the application\n";
@@ -178,6 +179,7 @@ let rec repl () =
           |"#change"->
             let nroom = String.sub directive 8 ((String.length directive)-8) in
             handle_change nroom cur_topic
+            >>repl ()
           |_->
             let partOfDir2 = String.sub directive 0 5 in
             begin
@@ -186,9 +188,11 @@ let rec repl () =
                 let nroom = String.sub directive 6 ((String.length directive)-6) in
                 print_endline ("joining " ^ nroom);
                 handle_join nroom
+                >> repl ()
               |"#game" ->
                 let game_msg = String.sub directive 6 ((String.length directive)-6) in
                 handle_game_client_side game_msg cur_topic
+                >> repl ()
               | _ -> failwith "invalid # command"
             end
         end

@@ -181,45 +181,45 @@ let rec print_list=function
 | (a,b)::l-> print_string a; print_string " ";print_string b; print_string " ,"; print_list l
 
 let read_frame ic =
-  print_endline "starting to read_frame";
+  lwt ()= Lwt_log.info "starting to read_frame" in
   (* let cmd = Lwt_io.read_line ic in *)
   let rec read_headers acc =
     Lwt_io.read_line ic  >>=
     (fun s ->
        match s with
        (* headers done if empty str *)
-       | "" -> print_endline "done reading headers"; return acc
+       | "" -> lwt ()= Lwt_log.info "done reading headers" in return acc
        | s ->
-         print_endline ("in reading headers match case: s " ^ s);
+         lwt ()= Lwt_log.info ("in reading headers match case: s " ^ s) in
          let sep = Str.regexp ":" in
          match Str.split sep s with
          | []    -> read_headers acc
          | [k;v] -> read_headers ((k,v)::acc)
          | h::t -> read_headers acc) in
   let final = (fun c ->
-    print_endline ("read cmd " ^ c);
+    lwt ()= Lwt_log.info ("read cmd " ^ c) in
     read_headers [] >>=
     (fun lst ->
        try
          let ()=print_list lst in
          let read_len = List.assoc "content-length" lst in
-         let ()=print_endline ("content length is "^read_len) in
+        lwt ()=Lwt_log.info ("content length is "^read_len) in
          let read_len = int_of_string read_len in
          let bytebuf = Bytes.create read_len in
          Lwt_io.read_into_exactly ic bytebuf 0 read_len >>= fun () ->
          (* print_endline "right before [read_to_null ic in found match case]"; *)
          lwt (_ : string) = Lwt_io.read_line ic in
-         print_endline "Done reading, just about to returned frame";
+         lwt ()= Lwt_log.info "Done reading, just about to returned frame"in
          return {cmd = cmd_of_str c; headers = lst ; body = (Bytes.to_string bytebuf) }
        with Not_found ->
           (*
           * if no content-length header then body is empty
           * and read to the nullbyte
          *)
-         let ()=print_list lst in
-         print_endline "right before [read_to_null ic] in Not_found match case";
+         (*let ()=print_list lst in*)
+         lwt ()= Lwt_log.info "right before [read_to_null ic] in Not_found match case" in
          read_to_null ic >>= fun () ->
-         print_endline "Done reading, just about to returned frame";
+         lwt ()= Lwt_log.info "Done reading, just about to returned frame" in
          return {cmd = cmd_of_str c; headers = lst ; body = ""})) in
   Lwt_io.read_line ic >>= final
 
