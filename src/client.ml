@@ -142,9 +142,9 @@ let rec handle_incoming_frames ()=
     | GAME_RESP -> Lwt_log.info "received GAME_RESP frame."
     | x-> Lwt_log.info ("received a frame of type not expected")
   >>
-  Lwt_log.info "Received a frame"
-  >> handle_incoming_frames ()
-and
+  (*lwt ()= Lwt_log.info "Received a frame" in*)
+  handle_incoming_frames ()
+
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
@@ -156,14 +156,9 @@ and
  Note: for tictactoe, string game_msg is in the form:
   opponent_name ^ " " ^ game_cmd *)
 
-(*let handle_connection () =
-  let rec loop () =
-    lwt frame = Protocol.read_frame (!cur_connection).input in
-    handle_incoming_frame frame >>
-    loop () in
-  loop ()*)
 
- repl () =
+
+let rec repl () =
   print_endline "in repl";
   let directive=read_line () in
   let cur_topic=option_to_str ((!cur_connection).topic) in
@@ -176,6 +171,7 @@ and
     |"#quit"->
         print_endline "matched #quit";
         handle_quit ()
+    |"#chatbot" -> failwith "Unimplemented chatbot"
     |_->
         let partOfDir=String.sub directive 0 7 in
         begin
@@ -194,7 +190,6 @@ and
           |"#game" ->
             let game_msg=String.sub directive 6 ((String.length directive)-6) in
             handle_game_client_side game_msg cur_topic
-          | "#chatbot" -> failwith "Unimplemented"
           | _ -> failwith "invalid # command"
           end
         end
@@ -203,13 +198,22 @@ and
     lwt ()=Lwt_log.info "Attempting to send message" in
     handle_send directive cur_topic
   >>
-  Lwt_log.info "Sent a frame"
-  >> repl ()
+  handle_incoming_frames ()
+  >>
+  lwt ()= Lwt_log.info "Sent a frame" in
+  repl ()
 
 (*
  * [main () ] creates a socket of type stream in the internet
  * domain with the default protocol and returns it
  *)
+let handle_connection () =
+  let rec doloop () =
+    lwt ()=handle_incoming_frames ()
+    and ()=repl () in
+    Lwt_log.info "Completed both loops?">> doloop ()
+  in
+  doloop ()
 
 let main ipstring =
   try_lwt
@@ -235,9 +239,8 @@ let main ipstring =
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
     Protocol.read_frame ic >>= f>>=
     fun fr ->
-    (lwt y=handle_incoming_frames ()
-    and x=repl () in
-    return ())
+    handle_connection ()
+    (*Lwt_log.info "completed both loops?"*)
     (* f >> repl () *)
   (*
    * with

@@ -176,6 +176,10 @@ let rec read_to_null ic =
     | _ -> read_to_null ic in
   Lwt_io.read_line ic >>= f
 
+let rec print_list=function
+[]-> ()
+| (a,b)::l-> print_string a; print_string " ";print_string b; print_string " ,"; print_list l
+
 let read_frame ic =
   print_endline "starting to read_frame";
   (* let cmd = Lwt_io.read_line ic in *)
@@ -197,7 +201,9 @@ let read_frame ic =
     read_headers [] >>=
     (fun lst ->
        try
+         let ()=print_list lst in
          let read_len = List.assoc "content-length" lst in
+         let ()=print_endline ("content length is "^read_len) in
          let read_len = int_of_string read_len in
          let bytebuf = Bytes.create read_len in
          Lwt_io.read_into_exactly ic bytebuf 0 read_len >>= fun () ->
@@ -210,6 +216,7 @@ let read_frame ic =
           * if no content-length header then body is empty
           * and read to the nullbyte
          *)
+         let ()=print_list lst in
          print_endline "right before [read_to_null ic] in Not_found match case";
          read_to_null ic >>= fun () ->
          print_endline "Done reading, just about to returned frame";
