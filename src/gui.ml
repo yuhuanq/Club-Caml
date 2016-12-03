@@ -65,7 +65,7 @@ let clear_chat () =
 let main () = Lwt_main.run(
   ignore(GtkMain.Main.init ());
   Lwt_glib.install ();
-  ignore(Client.main "127.0.0.1");
+  ignore(Client.main ("127.0.0.1") chat_buffer);
   let waiter,wakener = Lwt.wait () in
   let window = GWindow.window ~width:960 ~height:720 ~resizable:false
                               ~title:"Club Caml" () in
@@ -203,6 +203,7 @@ let main () = Lwt_main.run(
   window#add_accel_group accel_group;
   window#show ();
 
-  waiter)
+  waiter
+  )
 
 let () = main ()
