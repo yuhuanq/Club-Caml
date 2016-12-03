@@ -190,7 +190,7 @@ and
           |"#join"->
             let nroom=String.sub directive 6 ((String.length directive)-6) in
             print_endline ("joining " ^ nroom);
-            handle_join nroom >> repl ()
+            handle_join nroom
           |"#game" ->
             let game_msg=String.sub directive 6 ((String.length directive)-6) in
             handle_game_client_side game_msg cur_topic
