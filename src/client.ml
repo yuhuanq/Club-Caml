@@ -81,10 +81,10 @@ let handle_leave cur_topic=
   let f=function
         |x->
           match x.cmd with
-          |INFO-> Lwt_log.info ("INFO frame recvd")>>
+          |STATS -> Lwt_log.info ("STATS frame recvd")>>
           Lwt_log.info ("body of frame recvd: "^x.body)
           (* TODO: print header to user*)
-          |_-> Lwt_log.info "expected INFO frame"
+          |_-> Lwt_log.info "expected STATS frame"
   in
   Protocol.send_frame unsubframe (!cur_connection).output >>
   (read_frame (!cur_connection).input >>= f)
@@ -100,10 +100,10 @@ let handle_change nroom cur_topic=
   let f=function
         |x->
           match x.cmd with
-          |INFO-> Lwt_io.print ("INFO frame recvd")>>
+          |STATS-> Lwt_io.print ("STATS frame recvd")>>
           Lwt_io.print ("body of frame recvd: "^x.body)
           (* TODO: print header to user*)
-          |_-> Lwt_io.print "expected INFO frame"
+          |_-> Lwt_io.print "expected STATS frame"
   in
   send_frame unsubframe (!cur_connection).output >>
   (read_frame (!cur_connection).input >>=f)>>
@@ -116,9 +116,10 @@ let handle_join nroom=
   update_topic nroom;
   send_frame subframe (!cur_connection).output
 
-let handle_message msg cur_topic=
-  let msgframe= make_send cur_topic msg in
-  send_frame msgframe (!cur_connection).output
+let handle_send msg cur_topic=
+  let sendframe= make_send cur_topic msg in
+  lwt ()=Lwt_log.info "About to send the sendframe" in
+  send_frame sendframe (!cur_connection).output
 
 let handle_game_client_side game_msg cur_topic =
   let sender=(!cur_connection).username in
@@ -127,7 +128,9 @@ let handle_game_client_side game_msg cur_topic =
 
 (* TODO: handle incoming messages*)
 
+
 let rec handle_incoming_frames ()=
+  lwt ()=Lwt_log.info "Inside handle_incoming_frames" in
   let ic=(!cur_connection).input in
   Protocol.read_frame ic>>=
   fun x->
@@ -135,9 +138,13 @@ let rec handle_incoming_frames ()=
     | MESSAGE-> Lwt_log.info "received MESSAGE frame">>
                 Lwt_log.info ("body of frame recvd: "^x.body)
     | ERROR-> Lwt_log.info "received ERROR frame"
-    | INFO -> Lwt_log.info "received INFO frame"
+    | STATS -> Lwt_log.info "received STATS frame"
     | GAME_RESP -> Lwt_log.info "received GAME_RESP frame."
     | x-> Lwt_log.info ("received a frame of type not expected")
+  >>
+  (*lwt ()= Lwt_log.info "Received a frame" in*)
+  handle_incoming_frames ()
+
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
@@ -148,6 +155,8 @@ let rec handle_incoming_frames ()=
  Note: only change, leave, join, quit, game implemented
  Note: for tictactoe, string game_msg is in the form:
   opponent_name ^ " " ^ game_cmd *)
+
+
 
 let rec repl () =
   print_endline "in repl";
@@ -162,6 +171,7 @@ let rec repl () =
     |"#quit"->
         print_endline "matched #quit";
         handle_quit ()
+    |"#chatbot" -> failwith "Unimplemented chatbot"
     |_->
         let partOfDir=String.sub directive 0 7 in
         begin
@@ -176,33 +186,41 @@ let rec repl () =
           |"#join"->
             let nroom=String.sub directive 6 ((String.length directive)-6) in
             print_endline ("joining " ^ nroom);
-            handle_join nroom >> repl ()
+            handle_join nroom
           |"#game" ->
             let game_msg=String.sub directive 6 ((String.length directive)-6) in
             handle_game_client_side game_msg cur_topic
-          | "#chatbot" -> failwith "Unimplemented"
           | _ -> failwith "invalid # command"
           end
         end
     end
   | _->
-    handle_message directive cur_topic
+    lwt ()=Lwt_log.info "Attempting to send message" in
+    handle_send directive cur_topic
   >>
-  Lwt_log.info "Sent a frame"
-  >> repl ()
+  handle_incoming_frames ()
+  >>
+  lwt ()= Lwt_log.info "Sent a frame" in
+  repl ()
 
 (*
  * [main () ] creates a socket of type stream in the internet
  * domain with the default protocol and returns it
  *)
+let handle_connection () =
+  let rec doloop () =
+    lwt ()=handle_incoming_frames ()
+    and ()=repl () in
+    Lwt_log.info "Completed both loops?">> doloop ()
+  in
+  doloop ()
 
 let main ipstring =
-  (* try_lwt *)
+  try_lwt
     let inet_addr : Lwt_unix.inet_addr = Unix.inet_addr_of_string ipstring in
     let addr = Lwt_unix.ADDR_INET (inet_addr,port) in
     let sock = Lwt_unix.socket Lwt_unix.PF_INET Lwt_unix.SOCK_STREAM 0 in
     (*Do not need to bind, it is implicitly done - google this*)
-    print_endline "right before lwt_unix.connect sock addr";
     lwt () = Lwt_unix.connect sock addr in
     (* >>= fun () -> *)
     let oc = Lwt_io.of_fd Lwt_io.Output sock in
@@ -212,14 +230,17 @@ let main ipstring =
     let f=fun x->
             match x.cmd with
             | CONNECTED->
-                return (print_endline "CONNECTED frame rec")
-            | _-> return (print_endline "expected CONNECTED frame")
+                Lwt_log.info "recieved CONNECTED frame from server"
+            | _->
+                Lwt_log.info "expected a CONNECTED frame but got something else"
     in
     start_connection login pass ic oc >>= fun () ->
     print_endline "before protocol read_frame in client";
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
-    Protocol.read_frame ic >>= f>>= fun fr ->
-    repl ()
+    Protocol.read_frame ic >>= f>>=
+    fun fr ->
+    handle_connection ()
+    (*Lwt_log.info "completed both loops?"*)
     (* f >> repl () *)
   (*
    * with
@@ -230,3 +251,4 @@ let main ipstring =
    *)
 
 let () = Lwt_log.add_rule "*" Lwt_log.Info
+

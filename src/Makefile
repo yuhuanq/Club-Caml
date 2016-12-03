@@ -5,18 +5,21 @@
 # sb892, 2016-11-26 19:31
 
 all:
-	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_server.byte
+	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix,xml-light,cohttp,cohttp.lwt -syntax camlp4o run_server.byte
 	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_client.byte
 	mv run_server.byte camlserver
 	mv run_client.byte camlclient
 
 server:
-	ocamlbuild -use-ocamlfind -pkgs str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_server.byte
+	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix,xml-light,cohttp,cohttp.lwt -syntax camlp4o run_server.byte
 	mv run_server.byte camlserver
 
 client:
 	ocamlbuild -use-ocamlfind -pkgs ANSITerminal,str,lwt,lwt.syntax,lwt.unix -syntax camlp4o run_client.byte
 	mv run_client.byte camlclient
+
+chatbot:
+	ocamlbuild -use-ocamlfind -pkgs xml-light,lwt,lwt.syntax,lwt.unix,cohttp,cohttp.lwt -syntax camlp4o chatbot.byte
 
 test:
 	# ocamlbuild use-ocamlfind -pkgs str,lwt,lwt.unix,oUnit test_protocol.byte && ./test_protocol.byte
@@ -28,7 +31,6 @@ indent: *.ml
 
 clean:
 	ocamlbuild -clean
-	rm camlserver camlclient
 
 # vim:ft=make
 #

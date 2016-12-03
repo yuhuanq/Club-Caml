@@ -21,7 +21,7 @@ type command = | SEND
                | MESSAGE
                | RECEIPT
                | ERROR
-               | INFO
+               | STATS
                | GAME
                | GAME_RESP
 
@@ -45,7 +45,7 @@ let str_of_cmd = function
   | MESSAGE     -> "MESSAGE"
   | RECEIPT     -> "RECEIPT"
   | ERROR       -> "ERROR"
-  | INFO        -> "INFO"
+  | STATS       -> "STATS"
   | GAME        -> "GAME"
   | GAME_RESP   -> "GAME_RESP"
 
@@ -152,6 +152,7 @@ let pack frame =
   else ();
   Buffer.add_char buf '\n';
   Buffer.add_string buf frame.body;
+  print_endline ("frame body: " ^ frame.body);
   Buffer.add_string buf "\x00\n";
   buf
 
@@ -175,6 +176,10 @@ let rec read_to_null ic =
     | _ -> read_to_null ic in
   Lwt_io.read_line ic >>= f
 
+let rec print_list=function
+[]-> ()
+| (a,b)::l-> print_string a; print_string " ";print_string b; print_string " ,"; print_list l
+
 let read_frame ic =
   print_endline "starting to read_frame";
   (* let cmd = Lwt_io.read_line ic in *)
@@ -196,19 +201,22 @@ let read_frame ic =
     read_headers [] >>=
     (fun lst ->
        try
+         let ()=print_list lst in
          let read_len = List.assoc "content-length" lst in
+         let ()=print_endline ("content length is "^read_len) in
          let read_len = int_of_string read_len in
          let bytebuf = Bytes.create read_len in
-         Lwt_io.read_into_exactly ic bytebuf read_len 0 >>= fun () ->
+         Lwt_io.read_into_exactly ic bytebuf 0 read_len >>= fun () ->
          (* print_endline "right before [read_to_null ic in found match case]"; *)
          lwt (_ : string) = Lwt_io.read_line ic in
          print_endline "Done reading, just about to returned frame";
-         return {cmd = cmd_of_str c; headers = lst ; body = bytebuf }
+         return {cmd = cmd_of_str c; headers = lst ; body = (Bytes.to_string bytebuf) }
        with Not_found ->
           (*
           * if no content-length header then body is empty
           * and read to the nullbyte
          *)
+         let ()=print_list lst in
          print_endline "right before [read_to_null ic] in Not_found match case";
          read_to_null ic >>= fun () ->
          print_endline "Done reading, just about to returned frame";
@@ -272,22 +280,23 @@ let make_error message body =
               "content-length",string_of_int (String.length body)];
    body    = body }
 
-let make_info headers =
-  { cmd     = INFO;
+let make_stats headers =
+  { cmd     = STATS;
     headers = headers;
     body    = ""}
 
-let make_game dest game_cmd sender =
+let make_game dest opp game_cmd =
   { cmd = GAME;
     headers = ["destination", dest;
-               "sender", sender;
+               "opponent",opp;
                "content-length",string_of_int (String.length game_cmd)];
     body = game_cmd }
 
-let make_game_resp dest game_str sender =
+let make_game_message game_str (p1,p2) instructions =
   { cmd = GAME_RESP;
-    headers = ["destination", dest;
-               "sender", sender;
+    headers = ["player1", p1;
+               "player2", p2;
+               "instructions",instructions;
                "content-length",string_of_int (String.length game_str)];
     body = game_str }
 
