@@ -93,4 +93,4 @@ val make_info : (string * string) list -> frame
 
 val make_game        : string -> string -> string -> frame
 
-val make_game_resp   : string -> string -> string -> frame
+val make_game_message   : string -> string * string -> string -> frame
