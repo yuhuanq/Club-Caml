@@ -156,10 +156,14 @@ let get_usernames conns_set =
 let get_users_subbed topic =
   let conns' = H.find state.map topic in get_usernames conns'
 
-(* [gather_info ()] is an assoc list of active topics,num subscsribes*)
+(* [gather_info ()] is an assoc list of active topics, subscsribes*)
 let gather_info () =
-  H.fold (fun k v acc -> (k,string_of_int (List.length (CSET.elements v)))::acc)
-    state.map []
+  let get_usernames_str clst =
+    CSET.fold (fun elt acc ->
+      if String.length acc = 0 then elt.username
+      else elt.username ^ "," ^ acc) clst "" in
+  H.fold (fun k v acc -> (k,get_usernames_str v)::acc)
+  state.map []
 
 (* [newi] is a unique int *)
 let newi =
@@ -247,7 +251,10 @@ let handle_subscribe frame conn =
     let conns' = CSET.add conn' conns in
     H.replace state.map topic conns';
     Lwt_log.info (conn.username ^ " subscribed to " ^ topic) >>
-    return_unit
+    let message = Protocol.make_message topic (string_of_float
+    (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
+    Lwt_list.iter_p (fun conn -> Protocol.send_frame message conn.output)
+    (CSET.elements conns')
   with Not_found ->
     (* if nonexisting topic, create  it and sub conn to it  *)
     state.topics <- TOPICSET.add topic state.topics;
@@ -257,7 +264,10 @@ let handle_subscribe frame conn =
     H.add state.map_msg topic msgs;
     Lwt_log.info ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "
                    subscribed to " ^ topic) >>
-    return_unit
+    let message = Protocol.make_message topic (string_of_float
+    (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
+    Lwt_list.iter_p (fun conn -> Protocol.send_frame message conn.output)
+    (CSET.elements conns)
 
 exception Fail_Unsub
 
@@ -292,7 +302,7 @@ let handle_unsubscribe frame conn =
       (CSET.elements conns') >>
       (* Send a INFO frame with info on the curr. active rooms so that client can *)
       (* choose reconnect to a different room *)
-      let info_frame = make_info (gather_info ()) in
+      let info_frame = Protocol.make_info (gather_info ()) in
       Protocol.send_frame info_frame conn.output >>
       if conns' = CSET.empty then
         begin
