@@ -39,23 +39,27 @@ let (>>) (dt : unit Lwt.t) f = dt >>= (fun () -> f)
   let (client_channel:output_channel)= null
 *)
 
-let (emptyconn:connection)= {input=Lwt_io.zero; output=Lwt_io.null; topic=None; username=""}
-let cur_connection= ref emptyconn
+let (emptyconn:connection)= {
+  input  = Lwt_io.zero;
+  output = Lwt_io.null;
+  topic  = None; username=""
+}
 
-let update_topic top=
-  (!cur_connection).topic<-Some top
+let cur_connection = ref emptyconn
 
-let read_password_and_login ()=
-  let ()= ANSITerminal.(print_string [cyan]
-                          "\nEnter login and password on seperate lines.\n") in
-  let ()=print_string "username: " in
-  let log=read_line () in
-  let ()=print_string "password " in
-  let ()= ANSITerminal.(print_string [red]
-                          "(WARNING:PLAIN TEXT)") in
-  let ()=print_string ":" in
-  let pass=read_line () in
-  let ()=print_string "\n\n" in
+let update_topic top =
+  (!cur_connection).topic <- Some top
+
+let read_password_and_login () =
+  ANSITerminal.(print_string [cyan]
+  "\nEnter login and password on seperate lines.\n");
+  print_string "username: ";
+  let log = read_line () in
+  print_string "password ";
+  ANSITerminal.(print_string [red] "(WARNING:PLAIN TEXT)");
+  print_string ":";
+  let pass = read_line () in
+  print_string "\n\n";
   (log,pass)
 
 let start_connection login pass servFromChannel servToChannel=
@@ -73,7 +77,7 @@ let backlog = 100
 
 let option_to_str s=
   match s with
-  |Some x-> x
+  |Some x -> x
   |None -> ""
 
 let handle_leave cur_topic=
@@ -81,23 +85,23 @@ let handle_leave cur_topic=
   let f=function
     |x->
       match x.cmd with
-      |STATS -> Lwt_log.info ("STATS frame recvd")>>
-        Lwt_log.info ("body of frame recvd: "^x.body)
+      |STATS -> Lwt_log.info ("STATS frame recvd")
+        >> Lwt_log.info ("body of frame recvd: "^x.body)
       (* TODO: print header to user*)
       |_-> Lwt_log.info "expected STATS frame"
   in
   Protocol.send_frame unsubframe (!cur_connection).output >>
-  (read_frame (!cur_connection).input >>= f)
+  read_frame (!cur_connection).input >>= f
 
 let handle_quit () =
   print_endline "Quitting the application\n";
-  let disconframe=make_disconnect in
+  let disconframe = make_disconnect in
   Protocol.send_frame disconframe (!cur_connection).output
 
 let handle_change nroom cur_topic=
-  let unsubframe=make_unsubscribe cur_topic in
-  let subframe=make_subscribe nroom in
-  let f=function
+  let unsubframe = make_unsubscribe cur_topic in
+  let subframe = make_subscribe nroom in
+  let f = function
     |x->
       match x.cmd with
       |STATS-> Lwt_io.print ("STATS frame recvd")>>
@@ -105,7 +109,7 @@ let handle_change nroom cur_topic=
       (* TODO: print header to user*)
       |_-> Lwt_io.print "expected STATS frame" in
   send_frame unsubframe (!cur_connection).output >>
-  (read_frame (!cur_connection).input >>=f)>>
+  read_frame (!cur_connection).input >>= f >>
   send_frame subframe (!cur_connection).output
 
 
@@ -121,7 +125,7 @@ let handle_send msg cur_topic=
   send_frame sendframe (!cur_connection).output
 
 let handle_game_client_side game_msg cur_topic =
-  let sender=(!cur_connection).username in
+  let sender = (!cur_connection).username in
   let gameframe = Protocol.make_game cur_topic game_msg sender in
   send_frame gameframe (!cur_connection).output
 
@@ -131,8 +135,7 @@ let handle_game_client_side game_msg cur_topic =
 let rec handle_incoming_frames ()=
   lwt () = Lwt_log.info "Inside handle_incoming_frames" in
   let ic = (!cur_connection).input in
-  Protocol.read_frame ic>>=
-  fun fr->
+  Protocol.read_frame ic >>= fun fr ->
   match fr.cmd with
   | MESSAGE-> Lwt_log.info "received MESSAGE frame">>
     Lwt_log.info ("body of frame recvd: "^fr.body)
@@ -142,7 +145,6 @@ let rec handle_incoming_frames ()=
   | x-> Lwt_log.info ("received a frame of type not expected") >>
     (*lwt ()= Lwt_log.info "Received a frame" in*)
     handle_incoming_frames ()
-
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
@@ -154,13 +156,11 @@ let rec handle_incoming_frames ()=
    Note: for tictactoe, string game_msg is in the form:
    opponent_name ^ " " ^ game_cmd *)
 
-
-
 let rec repl () =
   print_endline "in repl";
-  lwt directive=Lwt_io.read_line Lwt_io.stdin in
-  let cur_topic=option_to_str ((!cur_connection).topic) in
-  let firstletter=directive.[0] in
+  lwt directive = Lwt_io.read_line Lwt_io.stdin in
+  let cur_topic = option_to_str ((!cur_connection).topic) in
+  let firstletter = directive.[0] in
   match firstletter with
   |'#'->
     begin
@@ -171,24 +171,24 @@ let rec repl () =
         handle_quit ()
       |"#chatbot" -> failwith "Unimplemented chatbot"
       | _ ->
-        let partOfDir=String.sub directive 0 7 in
+        let partOfDir = String.sub directive 0 7 in
         begin
           match partOfDir with
           |"#change"->
-            let nroom=String.sub directive 8 ((String.length directive)-8) in
+            let nroom = String.sub directive 8 ((String.length directive)-8) in
             handle_change nroom cur_topic
             >> repl ()
           |_->
-            let partOfDir2=String.sub directive 0 5 in
+            let partOfDir2 = String.sub directive 0 5 in
             begin
               match partOfDir2 with
               |"#join"->
-                let nroom=String.sub directive 6 ((String.length directive)-6) in
+                let nroom = String.sub directive 6 ((String.length directive)-6) in
                 print_endline ("joining " ^ nroom);
                 handle_join nroom
                 >> repl ()
               |"#game" ->
-                let game_msg=String.sub directive 6 ((String.length directive)-6) in
+                let game_msg = String.sub directive 6 ((String.length directive)-6) in
                 handle_game_client_side game_msg cur_topic
                 >> repl ()
               | _ -> failwith "invalid # command"
@@ -196,9 +196,9 @@ let rec repl () =
         end
     end
   | _ ->
-    lwt ()=Lwt_log.info "Attempting to send message" in
+    lwt () = Lwt_log.info "Attempting to send message" in
     handle_send directive cur_topic >>
-    lwt ()= Lwt_log.info "Sent a frame" in
+    lwt () =  Lwt_log.info "Sent a frame" in
     repl ()
 
 let handle_connection () =
