@@ -398,7 +398,7 @@ let handle_frame frame conn =
                   handle_unsubscribe frame conn
   | DISCONNECT -> Lwt_log.info "disconnecting a client" >>= fun _ ->
                   handle_disconnect frame conn
-  | GAME -> let _=print_endline "Received a game frame" in
+  | GAME -> Lwt_log.info "Received a game frame" >>= fun _ ->
             handle_game_server_side frame conn
   | _ -> failwith "invalid client frame"
 
@@ -541,3 +541,4 @@ let run_server () =
   clean_state ();
   let serve = create_server () in
   Lwt_main.run @@ serve ()
+

@@ -2,9 +2,12 @@ PKG lwt
 PKG oUnit
 PKG lwt.unix
 PKG ANSITerminal
+PKG lablgtk2
 PKG lwt.syntax
 PKG oUnit
 PKG ANSITerminal
 PKG sqlite3
+PKG cohttp cohttp.lwt cohttp.lwt-core xml-light
+
 S .
 B _build

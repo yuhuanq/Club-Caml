@@ -189,14 +189,14 @@ let rec repl () =
     handle_message directive cur_topic
   >>
   Lwt_log.info "Sent a frame"
-  >> repl ()
+  >> repl  ()
 
 (*
  * [main () ] creates a socket of type stream in the internet
  * domain with the default protocol and returns it
  *)
 
-let main ipstring =
+let main ipstring (chat_buffer:GText.buffer)=
   (* try_lwt *)
     let inet_addr : Lwt_unix.inet_addr = Unix.inet_addr_of_string ipstring in
     let addr = Lwt_unix.ADDR_INET (inet_addr,port) in
@@ -218,6 +218,9 @@ let main ipstring =
     start_connection login pass ic oc >>= fun () ->
     print_endline "before protocol read_frame in client";
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
+
+    chat_buffer#insert "This line was printed from main in client";
+
     Protocol.read_frame ic >>= f>>= fun fr ->
     repl ()
     (* f >> repl () *)
