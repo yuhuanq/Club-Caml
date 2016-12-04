@@ -149,14 +149,13 @@ let rec_message fr =
   let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
   (* ANSITerminal.print_string [ANSITerminal.cyan] display_str; *)
   (* Lwt_io.print display_str *)
-  Notty.I.string (Notty.A.bg Notty.A.cyan) display_str |> Notty_lwt.output_image_endline
+  Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |> Notty_lwt.output_image_endline
   (* return_unit *)
 
 let rec_game_message fr =
   (* instructions may = "" *)
   let instructions = Protocol.get_header  fr "instructions" in
   Lwt_log.info instructions >> Lwt_log.info fr.body
-
 
 (* TODO: handle incoming messages*)
 let rec handle_incoming_frames ()=
