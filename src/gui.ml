@@ -11,25 +11,24 @@ open GMain
 open GdkKeysyms
 open Gui_helper
 
-(*--------------GTK objects used by main--------------*)
-(*temp. mockup user list.*)
-let users = [Some "Eric Wang";Some "Somrita42";
-             Some "bcForLife";Some "yuhuan_vim"]
+(*--------------Function linking gui and client--------------*)
 
-(*See GObject.data_conv*)
-let string_list_conv =
-  let open Gobject in
-  {kind=`STRING;
-   proj=(fun x -> match x with
-                  |`STRING y -> y
-                  |_ -> failwith "conversion failed! not a string.");
-   inj=(fun x -> match x with
-                 |Some x -> `STRING (Some x)
-                 |None -> `STRING (None) )
-  }
+(*[enter_cb entry] takes in an entry widget and sends the cur. text to be
+ *processed by Client.*)
+let enter_cb entry () = (*This function should write to the output channel*)
+  let text = entry#text in
+  (* TODO: integrate with client here *)
+  let open Lwt in
+(*
+ * How the line below works. Call Client.process which takes in the entry#text
+ * and interprets it -> send a Frame to server -> receive Frame back -> writes
+ * output using Gui_helper.msg_insert
+ *)
+  ignore_result (Client.process entry#text);
 
-let (user_list_store,column) = GTree.store_of_list string_list_conv users
+  print_endline ("[user entry] - "^text^("\n"));
 
+  entry#set_text "" (*clear user text entry*)
 
 (*-----------------MAIN LOOP-----------------*)
 let main () = Lwt_main.run(
@@ -141,26 +140,6 @@ let main () = Lwt_main.run(
   let entry_box = GPack.hbox ~packing:vbox#add () in
 
   (*User text entry widget*)
-
-  let enter_cb entry () = (*This function should write to the output channel*)
-    let text = entry#text in
-    (* TODO: integrate with client here *)
-    let open Lwt in
-  (*
-   *   HOW the line below works. Call Client.process which takes in the entry#text
-   * and interprets it -> send a Frame to server -> receive Frame back -> writes
-   * output using Gui_helper.msg_insert
-   *)
-    ignore_result (Client.process entry#text);
-    print_endline (text^("\n"));
-    chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[Gui_helper.tag]
-                      "[10:32 PM] <Eric Wang> ";
-    chat_buffer#insert ~iter:chat_buffer#end_iter (text^("\n"));
-    (*keep scrollbar at newest messages*)
-    Gui_helper.adjustment#set_value (Gui_helper.adjustment#upper);
-    entry#set_text "" (*clear user text entry*)
-  in
-
   let entry = GEdit.entry ~max_length:500 ~packing:entry_box#add () in
   ignore(entry#connect#activate ~callback:(enter_cb entry));
   (*make button width small*)
