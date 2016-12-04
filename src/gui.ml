@@ -144,7 +144,14 @@ let main () = Lwt_main.run(
 
   let enter_cb entry () = (*This function should write to the output channel*)
     let text = entry#text in
-
+    (* TODO: integrate with client here *)
+    let open Lwt in
+  (*
+   *   HOW the line below works. Call Client.process which takes in the entry#text
+   * and interprets it -> send a Frame to server -> receive Frame back -> writes
+   * output using Gui_helper.msg_insert
+   *)
+    ignore_result (Client.process entry#text);
     print_endline (text^("\n"));
     chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[Gui_helper.tag]
                       "[10:32 PM] <Eric Wang> ";

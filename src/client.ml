@@ -148,7 +148,9 @@ let rec_message fr =
   let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
   (* ANSITerminal.print_string [ANSITerminal.cyan] display_str; *)
   (* Lwt_io.print display_str *)
-  Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |> Notty_lwt.output_image_endline
+  Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |>
+  Notty_lwt.output_image_endline >>= fun () ->
+  return (Gui_helper.msg_insert "" display_str)
   (* return_unit *)
 
 let rec_game_message fr =
@@ -215,6 +217,38 @@ let rec repl () =
     handle_send raw_input cur_topic  >>
     Lwt_log.info "Sent a frame" >> repl ()
 
+
+let rec process raw_input =
+  (* TODO: for gui integration *)
+  (* lwt () = Lwt_log.info "in repl" in *)
+  (* lwt raw_input = Lwt_io.read_line Lwt_io.stdin in *)
+  let cur_topic = option_to_str ((!cur_connection).topic) in
+  if Str.string_match dir_re raw_input 0 then
+    let wdlst = Str.split (Str.regexp "[ \t]+") raw_input in
+    match wdlst with
+    | [dir] ->
+        if dir = "#quit" then handle_quit ()
+        (* TODO *)
+        else if dir = "#leave" then failwith "unimplemented"
+        else Lwt_io.print "Invalid directive"
+    | [dir;topic] ->
+        (* TODO: games *)
+        if String.length topic > 50 || String.length topic < 1 then
+          Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
+        else
+          begin
+            if dir = "#join" then handle_join topic
+            else if dir = "#change" then handle_change topic cur_topic
+            else Lwt_io.print "Invalid directive command"
+          end
+    | _ ->
+        Lwt_io.print "Invalid directive command"
+  else
+    Lwt_log.info "Attempting to send message" >>
+    handle_send raw_input cur_topic >>
+    Lwt_log.info "Sent a frame"
+
+
 let handle_connection () =
   let rec loop () =
     handle_incoming_frames () >>= loop
@@ -243,8 +277,9 @@ let main ipstring =
     print_endline "before protocol read_frame in client";
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
     Protocol.read_frame ic >>= f >>= fun fr ->
-    Lwt.async handle_connection;
-    repl ()
+    handle_connection ()
+    (* Lwt.async handle_connection; *)
+    (* repl () *)
   (*Lwt_log.info "completed both loops?"*)
   (* f >> repl () *)
   with
