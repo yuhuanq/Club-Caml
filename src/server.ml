@@ -165,6 +165,10 @@ let gather_info () =
   H.fold (fun k v acc -> (k,get_usernames_str v)::acc)
   state.map []
 
+let get_room_stats () =
+  H.fold (fun k v acc -> (k,string_of_int (List.length (CSET.elements
+  v)))::acc) state.map []
+
 (* [newi] is a unique int *)
 let newi =
   let r = ref 0 in
@@ -323,7 +327,7 @@ let handle_unsubscribe frame conn =
       (CSET.elements conns') >>
       (* Send a INFO frame with info on the curr. active rooms so that client can *)
       (* choose reconnect to a different room *)
-      let stat_frame = Protocol.make_stats (gather_info ()) in
+      let stat_frame = Protocol.make_stats (get_room_stats ()) in
       Protocol.send_frame stat_frame conn.output >>
       if conns' = CSET.empty then
         begin
