@@ -52,17 +52,16 @@ let cur_connection = ref emptyconn
 let update_topic top =
   (!cur_connection).topic <- Some top
 
-let read_password_and_login () =
+let rec read_nickname () =
   ANSITerminal.(print_string [cyan]
-                  "\nEnter login and password on seperate lines.\n");
+                  "\nPlease choose a nickname or username.\n");
   print_string "username: ";
-  let log = read_line () in
-  print_string "password ";
-  ANSITerminal.(print_string [red] "(WARNING:PLAIN TEXT)");
-  print_string ":";
-  let pass = read_line () in
-  print_string "\n\n";
-  (log,pass)
+  let nick = read_line () in
+  if String.length nick > 9 || String.length nick < 1 then
+    begin print_endline "Nickname is too short or long";
+    read_nickname () end
+  else
+    nick
 
 let start_connection login pass servFromChannel servToChannel=
   let conframe = Protocol.make_connect login pass in
@@ -200,9 +199,15 @@ let rec repl () =
         else Lwt_io.print "Invalid directive" >> repl ()
     | [dir;topic] ->
         (* TODO: games *)
-        if dir = "#join" then handle_join topic >> repl ()
-        else if dir = "#change" then handle_change topic cur_topic >> repl ()
-        else Lwt_io.print "Invalid directive command" >> repl ()
+        if String.length topic > 50 || String.length topic < 1 then
+          Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
+          >> repl ()
+        else
+          begin
+            if dir = "#join" then handle_join topic >> repl ()
+            else if dir = "#change" then handle_change topic cur_topic >> repl ()
+            else Lwt_io.print "Invalid directive command" >> repl ()
+          end
     | _ ->
         Lwt_io.print "Invalid directive command" >> repl ()
   else
@@ -227,14 +232,14 @@ let main ipstring =
     let oc = Lwt_io.of_fd Lwt_io.Output sock in
     let ic = Lwt_io.of_fd Lwt_io.Input sock in
     print_endline "right before read pw";
-    let (login,pass) = read_password_and_login () in
+    let login = read_nickname () in
     let f = fun x->
       match x.cmd with
       | CONNECTED->
         Lwt_log.info "recieved CONNECTED frame from server"
       | _->
         Lwt_log.info "expected a CONNECTED frame but got something else" in
-    start_connection login pass ic oc >>= fun () ->
+    start_connection login "" ic oc >>= fun () ->
     print_endline "before protocol read_frame in client";
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
     Protocol.read_frame ic >>= f >>= fun fr ->
