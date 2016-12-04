@@ -8,6 +8,6 @@ PKG oUnit
 PKG ANSITerminal
 PKG sqlite3
 PKG cohttp cohttp.lwt cohttp.lwt-core xml-light
-
+PKG notty
 S .
 B _build

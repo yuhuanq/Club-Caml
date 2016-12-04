@@ -165,6 +165,10 @@ let gather_info () =
   H.fold (fun k v acc -> (k,get_usernames_str v)::acc)
   state.map []
 
+let get_room_stats () =
+  H.fold (fun k v acc -> (k,string_of_int (List.length (CSET.elements
+  v)))::acc) state.map []
+
 (* [newi] is a unique int *)
 let newi =
   let r = ref 0 in
@@ -176,16 +180,20 @@ let () = Chatbot.init ()
 let handle_chatbot frame conn =
   (* TODO: continue conversation, rn before every msg, init is called *)
   (* Chatbot.init (); *)
+  let topic = Protocol.get_header frame "destination"  in
   let botre = Chatbot.ask frame.body in
-  let reply = Protocol.make_message "Chatbot"
+  Lwt_log.info ("Bot response is: " ^ botre) >>
+  let reply = Protocol.make_message topic
   (string_of_float (Unix.gettimeofday ())) conn.username botre in
-  let conns = H.find state.map "Chatbot" in
+  Lwt_log.info "Right before let conns = H.find state.map topic L185" >>
+  let conns = H.find state.map topic in
+  Lwt_log.info "Right before Lwt_list.iter_p L187" >>
   Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
   (CSET.elements conns)
 
 let handle_send_topic frame conn =
   let topic = Protocol.get_header frame "destination" in
-  if topic = "Chatbot" then handle_chatbot frame conn else
+  if topic = "/topic/Chatbot" then handle_chatbot frame conn else
     let msg = frame.body in
     let mid = string_of_float (Unix.gettimeofday ()) in
     let conns = H.find state.map topic in
@@ -286,9 +294,6 @@ let handle_subscribe frame conn =
 
 exception Fail_Unsub
 
-
-
-
 (*
  * [handle_unsubscribe] handles a UNSUBSCRIBE frame. a UNSUBSCRIBE command is
  * used to remove an existing subscribtion - to no longer receive messages from
@@ -322,7 +327,7 @@ let handle_unsubscribe frame conn =
       (CSET.elements conns') >>
       (* Send a INFO frame with info on the curr. active rooms so that client can *)
       (* choose reconnect to a different room *)
-      let stat_frame = Protocol.make_stats (gather_info ()) in
+      let stat_frame = Protocol.make_stats (get_room_stats ()) in
       Protocol.send_frame stat_frame conn.output >>
       if conns' = CSET.empty then
         begin
@@ -340,6 +345,8 @@ let handle_unsubscribe frame conn =
     let error = make_error "" "cannot unsubscribe from a nonexsting topic" in
     Protocol.send_frame error conn.output
 
+exception Disconnected_EOF
+
 (* [handle_disconnect] does a graceful disconnect for a client from the server *)
 (* val handle_subscribe : frame -> connection -> unit  *)
 let handle_disconnect frame conn =
@@ -355,7 +362,7 @@ let handle_disconnect frame conn =
        H.replace state.map k conns' in
      H.iter f state.map;
      (* terminate the thread now with exn *)
-     fail End_of_file
+     fail Disconnected_EOF
 
 let get_player' p (p1,p2) =
   if p = p1 then p2
@@ -428,12 +435,17 @@ let handle_frame frame conn =
   | _ -> fail (Failure "invalid client frame")
 
 let handle_connection conn () =
-  let rec loop () =
-    lwt frame = Protocol.read_frame conn.input in
-    handle_frame frame conn >>
-    loop ()
-  in
-    loop ()
+  try_lwt
+    let rec loop () =
+      lwt frame = Protocol.read_frame conn.input in
+      handle_frame frame conn >>
+      loop ()
+    in
+      loop ()
+  with End_of_file ->
+    (* incl CTRL-C  *)
+    let dummy = Protocol.make_disconnect in
+    handle_disconnect dummy conn
 
 (* [close_connection conn] closes a connection gracefully *)
 let close_connection conn =
@@ -558,3 +570,4 @@ let run_server () =
    else () in
    H.iter helper map_message;
    return () *)
+
