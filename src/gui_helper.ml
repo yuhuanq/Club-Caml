@@ -1,5 +1,6 @@
 (*********************************************************
- gui_helper.ml has useful functions to manipulate the gui
+ gui_helper.ml has useful functions to manipulate the gui.
+                Refer to the second section.
  *********************************************************)
 
 (*These values are used for construcing the GUI*)
@@ -33,6 +34,10 @@ let string_list_conv =
 
 let (user_list_store,column) = GTree.store_of_list string_list_conv []
 
+let room_label = GMisc.label
+            ~markup:"<span weight=\"bold\" size=\"larger\">Select a Room</span>"
+            ~justify:`CENTER ()
+
 (*----------------------------------------------------------*)
 (*[msg_insert identifier msg] inserts a message into the GUI.
  *The identifier should be of form "[9:52 PM] <Eric Wang>"*)
@@ -55,3 +60,8 @@ let set_usr_list (user_list:string list) =
     user_list_store#set iter column (Some usr)
   in
   List.iter append_usr user_list
+
+(*[set_room_label room] sets the room label in the gui to [room]*)
+let set_room_label (room:string) =
+  room_label#set_label
+    ("<span weight=\"bold\" size=\"larger\">"^room^"</span>")
