@@ -190,27 +190,25 @@ let rec repl () =
   lwt () = Lwt_log.info "in repl" in
   lwt raw_input = Lwt_io.read_line Lwt_io.stdin in
   let cur_topic = option_to_str ((!cur_connection).topic) in
-  lwt () =
-    if Str.string_match dir_re raw_input 0 then
-      let wdlst = Str.split (Str.regexp "[ \t]+") raw_input in
-      match wdlst with
-      | [dir] ->
-          if dir = "#quit" then handle_quit ()
-          (* TODO *)
-          else if dir = "#leave" then failwith "unimplemented"
-          else Lwt_io.print "Invalid directive"
-      | [dir;topic] ->
-          (* TODO: games *)
-          if dir = "#join" then handle_join topic
-          else if dir = "#change" then handle_change topic cur_topic
-          else Lwt_io.print "Invalid directive command"
-      | _ ->
-          Lwt_io.print "Invalid directive command"
-    else
-      Lwt_log.info "Attempting to send message" >>
-      handle_send raw_input cur_topic  >>
-      Lwt_log.info "Sent a frame" in
-  repl ()
+  if Str.string_match dir_re raw_input 0 then
+    let wdlst = Str.split (Str.regexp "[ \t]+") raw_input in
+    match wdlst with
+    | [dir] ->
+        if dir = "#quit" then handle_quit ()
+        (* TODO *)
+        else if dir = "#leave" then failwith "unimplemented"
+        else Lwt_io.print "Invalid directive" >> repl ()
+    | [dir;topic] ->
+        (* TODO: games *)
+        if dir = "#join" then handle_join topic >> repl ()
+        else if dir = "#change" then handle_change topic cur_topic >> repl ()
+        else Lwt_io.print "Invalid directive command" >> repl ()
+    | _ ->
+        Lwt_io.print "Invalid directive command" >> repl ()
+  else
+    Lwt_log.info "Attempting to send message" >>
+    handle_send raw_input cur_topic  >>
+    Lwt_log.info "Sent a frame" >> repl ()
 
 let handle_connection () =
   let rec loop () =

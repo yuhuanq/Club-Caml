@@ -345,6 +345,8 @@ let handle_unsubscribe frame conn =
     let error = make_error "" "cannot unsubscribe from a nonexsting topic" in
     Protocol.send_frame error conn.output
 
+exception Disconnected_EOF
+
 (* [handle_disconnect] does a graceful disconnect for a client from the server *)
 (* val handle_subscribe : frame -> connection -> unit  *)
 let handle_disconnect frame conn =
@@ -360,7 +362,7 @@ let handle_disconnect frame conn =
        H.replace state.map k conns' in
      H.iter f state.map;
      (* terminate the thread now with exn *)
-     fail End_of_file
+     fail Disconnected_EOF
 
 let get_player' p (p1,p2) =
   if p = p1 then p2
@@ -433,12 +435,17 @@ let handle_frame frame conn =
   | _ -> fail (Failure "invalid client frame")
 
 let handle_connection conn () =
-  let rec loop () =
-    lwt frame = Protocol.read_frame conn.input in
-    handle_frame frame conn >>
-    loop ()
-  in
-    loop ()
+  try_lwt
+    let rec loop () =
+      lwt frame = Protocol.read_frame conn.input in
+      handle_frame frame conn >>
+      loop ()
+    in
+      loop ()
+  with End_of_file ->
+    (* incl CTRL-C  *)
+    let dummy = Protocol.make_disconnect in
+    handle_disconnect dummy conn
 
 (* [close_connection conn] closes a connection gracefully *)
 let close_connection conn =
