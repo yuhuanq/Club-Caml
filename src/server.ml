@@ -250,6 +250,7 @@ let option_to_str s=
 let handle_subscribe frame conn =
   let topic = Protocol.get_header frame "destination" in
   lwt () = Lwt_log.info (conn.username ^ " trying to subscribe to " ^ topic) in
+  conn.topic<-Some topic;
   let conn' = {conn with topic = Some topic} in
   try_lwt
     let conns = H.find state.map topic in
@@ -258,7 +259,6 @@ let handle_subscribe frame conn =
     Lwt_log.info (conn.username ^ " subscribed to " ^ topic) >>
     let message = Protocol.make_message topic (string_of_float
     (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
-    conn.topic<-Some topic;
     lwt ()=Lwt_log.info ("Current connection topic "^(option_to_str conn.topic)) in
     Lwt_list.iter_p (fun conn -> Protocol.send_frame message conn.output)
     (CSET.elements conns')
@@ -305,12 +305,12 @@ let handle_unsubscribe frame conn =
   try_lwt
     match conn.topic with
     | Some s when s = topic ->
-      conn.topic <- None;
       let conns = H.find state.map topic in
       let conns' = CSET.remove conn conns in
       H.replace state.map topic conns';
       ignore_result (Lwt_log.info ("unsubscribed " ^ conn.username ^ " from " ^
                                    topic));
+      conn.topic <- None;
       let left_message = Protocol.make_message topic "BROKER" (string_of_float
         (Unix.gettimeofday ())) (conn.username ^ " has left the room.") in
       (*
