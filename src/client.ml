@@ -11,7 +11,8 @@
 (* Reminder:
    1. need to do code for when client receives a game_resp frame from server.
    2. client.mli??
-   3. database frame to send to server to request data. In this case, chat history*)
+   3. database frame to send to server to request data. In this case, chat
+   history*)
 
 open Unix
 open Lwt
@@ -111,10 +112,10 @@ let handle_change nroom cur_topic=
         Lwt_io.print ("body of frame recvd: "^x.body)
       (* TODO: print header to user*)
       |_-> Lwt_io.print "expected STATS frame" in
+  (!cur_connection).topic <- Some nroom;
   send_frame unsubframe (!cur_connection).output >>
   (* read_frame (!cur_connection).input >>= f >> *)
   send_frame subframe (!cur_connection).output
-
 
 let handle_join nroom=
   print_endline ("Attempting to join room "^nroom^"\n");
@@ -122,7 +123,7 @@ let handle_join nroom=
   let ()=update_topic nroom in
   send_frame subframe (!cur_connection).output
 
-let handle_send msg cur_topic=
+let handle_send msg cur_topic : unit Lwt.t =
   let sendframe = make_send cur_topic msg in
   lwt () = Lwt_log.info "About to send the sendframe" in
   send_frame sendframe (!cur_connection).output
@@ -133,20 +134,17 @@ let handle_game_client_side game_msg cur_topic =
   send_frame gameframe (!cur_connection).output
 
 (* TODO: handle incoming messages*)
-
-
 let rec handle_incoming_frames ()=
   lwt () = Lwt_log.info "Inside handle_incoming_frames" in
   let ic = (!cur_connection).input in
   Protocol.read_frame ic >>= fun fr ->
   match fr.cmd with
   | MESSAGE-> Lwt_log.info "received MESSAGE frame">>
-    Lwt_log.info ("body of frame recvd: "^fr.body)
+    Lwt_log.info ("body of frame recvd: " ^ fr.body)
   | ERROR-> Lwt_log.info "received ERROR frame"
   | STATS -> Lwt_log.info "received STATS frame"
   | GAME_RESP -> Lwt_log.info "received GAME_RESP frame."
-  | x-> Lwt_log.info ("received a frame of type not expected") >>
-    (*lwt ()= Lwt_log.info "Received a frame" in*)
+  | _ -> Lwt_log.info ("received a frame of type not expected") >>
     handle_incoming_frames ()
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
@@ -159,50 +157,33 @@ let rec handle_incoming_frames ()=
    Note: for tictactoe, string game_msg is in the form:
    opponent_name ^ " " ^ game_cmd *)
 
+let dir_re = Str.regexp "#"
+
 let rec repl () =
-  lwt ()=Lwt_log.info "in repl" in
-  lwt directive=Lwt_io.read_line Lwt_io.stdin in
-  let cur_topic=option_to_str ((!cur_connection).topic) in
-  (let firstletter=directive.[0] in
-  match firstletter with
-  |'#'->
-    begin
-      match directive with
-      |"#leave" -> handle_leave cur_topic
-      |"#quit" ->
-        print_endline "matched #quit";
-        handle_quit ()
-      |"#chatbot" -> failwith "Unimplemented chatbot"
+  lwt () = Lwt_log.info "in repl" in
+  lwt raw_input = Lwt_io.read_line Lwt_io.stdin in
+  let cur_topic = option_to_str ((!cur_connection).topic) in
+  lwt () =
+    if Str.string_match dir_re raw_input 0 then
+      let wdlst = Str.split (Str.regexp "[ \t]+") raw_input in
+      match wdlst with
+      | [dir] ->
+          if dir = "#quit" then handle_quit ()
+          (* TODO *)
+          else if dir = "#leave" then failwith "unimplemented"
+          else Lwt_io.print "Invalid directive"
+      | [dir;topic] ->
+          (* TODO: games *)
+          if dir = "#join" then handle_join topic
+          else if dir = "#change" then handle_change topic cur_topic
+          else Lwt_io.print "Invalid directive command"
       | _ ->
-        let partOfDir = String.sub directive 0 7 in
-        begin
-          match partOfDir with
-          |"#change" ->
-            let nroom = String.sub directive 8 ((String.length directive)-8) in
-            handle_change nroom cur_topic
-            >>repl ()
-          |_->
-            let partOfDir2 = String.sub directive 0 5 in
-            begin
-              match partOfDir2 with
-              |"#join" ->
-                let nroom = String.sub directive 6 ((String.length directive)-6) in
-                print_endline ("joining " ^ nroom);
-                handle_join nroom
-                >> repl ()
-              |"#game" ->
-                let game_msg = String.sub directive 6 ((String.length directive)-6) in
-                handle_game_client_side game_msg cur_topic
-                >> repl ()
-              | _ -> failwith "invalid # command"
-            end
-        end
-    end
-  | _ ->
-    lwt () = Lwt_log.info "Attempting to send message" in
-    handle_send directive cur_topic ) >>
-    lwt () =  Lwt_log.info "Sent a frame" in
-    repl ()
+          Lwt_io.print "Invalid directive command"
+    else
+      Lwt_log.info "Attempting to send message" >>
+      handle_send raw_input cur_topic  >>
+      Lwt_log.info "Sent a frame" in
+  repl ()
 
 let handle_connection () =
   let rec loop () =
