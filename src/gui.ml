@@ -9,63 +9,32 @@
 
 open GMain
 open GdkKeysyms
+open Gui_helper
 
+(*--------------Function linking gui and client--------------*)
 
-(*--------------GTK objects used by other functions & main--------------*)
-(*mockup user list.*)
-let users = [Some "Eric Wang";Some "Somrita42";
-             Some "bcForLife";Some "yuhuan_vim"]
+(*[enter_cb entry] takes in an entry widget and sends the cur. text to be
+ *processed by Client.*)
+let enter_cb entry () = (*This function should write to the output channel*)
+  let text = entry#text in
+  (* TODO: integrate with client here *)
+  let open Lwt in
+(*
+ * How the line below works. Call Client.process which takes in the entry#text
+ * and interprets it -> send a Frame to server -> receive Frame back -> writes
+ * output using Gui_helper.msg_insert
+ *)
+  ignore_result (Client.process entry#text);
 
-(*See GObject.data_conv*)
-let string_list_conv =
-  let open Gobject in
-  {kind=`STRING;
-   proj=(fun x -> match x with
-                  |`STRING y -> y
-                  |_ -> failwith "conversion failed! not a string.");
-   inj=(fun x -> match x with
-                 |Some x -> `STRING (Some x)
-                 |None -> `STRING (None) )
-  }
+  print_endline ("[user entry] - "^text^("\n"));
 
-let (user_list_store,column) = GTree.store_of_list string_list_conv users
-
-let tag =
-  let temp = GText.tag ~name:"msg_id_tag"() in
-  temp#set_property (`WEIGHT (`BOLD));temp
-
-let casted_tag = tag#as_tag
-
-let tag_table =
-  let init_tag_table = GText.tag_table () in
-  init_tag_table#add casted_tag;init_tag_table
-
-let chat_buffer = GText.buffer ~tag_table:tag_table
-                              ~text:"Welcome to Club Caml!\n" ()
-
-(*the vertical scrollbar*)
-let adjustment = GData.adjustment ()
-
-(*---------------------Useful functions-----------------------*)
-(*[msg_insert identifier msg] inserts string message into the chat.
- *Format of identifier string is "10:11 PM] <Eric Wang>" *)
-let msg_insert identifier msg =
-  chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[tag]
-                    identifier;
-  chat_buffer#insert ~iter:chat_buffer#end_iter (msg^("\n"));
-  adjustment#set_value (adjustment#upper)
-
-let clear_chat () =
-  chat_buffer#delete (chat_buffer#get_iter `START) chat_buffer#end_iter;
-  chat_buffer#insert "Welcome to Club Caml!\n"
-
-
+  entry#set_text "" (*clear user text entry*)
 
 (*-----------------MAIN LOOP-----------------*)
 let main () = Lwt_main.run(
   ignore(GtkMain.Main.init ());
   Lwt_glib.install ();
-  ignore(Client.main ("127.0.0.1") chat_buffer);
+  ignore(Client.main ("127.0.0.1"));
   let waiter,wakener = Lwt.wait () in
   let window = GWindow.window ~width:960 ~height:720 ~resizable:false
                               ~title:"Club Caml" () in
@@ -132,7 +101,7 @@ let main () = Lwt_main.run(
   chat_and_info#set_position 810;
 
   (*Chat box widget*)
-  let scrolled_window = GBin.scrolled_window ~vadjustment:adjustment
+  let scrolled_window = GBin.scrolled_window ~vadjustment:Gui_helper.adjustment
                                              ~packing:chat_and_info#add () in
   scrolled_window#set_hpolicy `NEVER;
   scrolled_window#set_vpolicy `AUTOMATIC;
@@ -171,20 +140,10 @@ let main () = Lwt_main.run(
   let entry_box = GPack.hbox ~packing:vbox#add () in
 
   (*User text entry widget*)
-  let enter_cb entry () =
-    let text = entry#text in
-
-    print_endline (text^("\n"));
-    chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[tag]
-                      "[10:32 PM] <Eric Wang> ";
-    chat_buffer#insert ~iter:chat_buffer#end_iter (text^("\n"));
-    adjustment#set_value (adjustment#upper); (*keep scrollbar at newest messages*)
-    entry#set_text "" (*clear user text entry*)
-  in
-
   let entry = GEdit.entry ~max_length:500 ~packing:entry_box#add () in
   ignore(entry#connect#activate ~callback:(enter_cb entry));
-  entry#misc#set_size_request ~width:920 ~height:40 () ; (*make button width small*)
+  (*make button width small*)
+  entry#misc#set_size_request ~width:920 ~height:40 () ;
 
 
   (* Send Button *)
