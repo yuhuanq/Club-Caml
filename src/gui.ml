@@ -9,10 +9,10 @@
 
 open GMain
 open GdkKeysyms
+open Gui_helper
 
-
-(*--------------GTK objects used by other functions & main--------------*)
-(*mockup user list.*)
+(*--------------GTK objects used by main--------------*)
+(*temp. mockup user list.*)
 let users = [Some "Eric Wang";Some "Somrita42";
              Some "bcForLife";Some "yuhuan_vim"]
 
@@ -30,21 +30,12 @@ let string_list_conv =
 
 let (user_list_store,column) = GTree.store_of_list string_list_conv users
 
-let casted_tag = Gui_helper.tag#as_tag
-
-let tag_table =
-  let init_tag_table = GText.tag_table () in
-  init_tag_table#add casted_tag;init_tag_table
-
-let chat_buffer = GText.buffer ~tag_table:tag_table
-                              ~text:"Welcome to Club Caml!\n" ()
-
 
 (*-----------------MAIN LOOP-----------------*)
 let main () = Lwt_main.run(
   ignore(GtkMain.Main.init ());
   Lwt_glib.install ();
-  ignore(Client.main ("127.0.0.1") chat_buffer);
+  ignore(Client.main ("127.0.0.1"));
   let waiter,wakener = Lwt.wait () in
   let window = GWindow.window ~width:960 ~height:720 ~resizable:false
                               ~title:"Club Caml" () in
@@ -103,7 +94,7 @@ let main () = Lwt_main.run(
 
   (*View menu*)
   let factory = new GMenu.factory view_menu ~accel_group in
-  ignore(factory#add_item "Clear Chat" ~key:_R ~callback:(Gui_helper.clear_chat chat_buffer));
+  ignore(factory#add_item "Clear Chat" ~key:_R ~callback:(clear_chat));
 
   (*chat box and user info PANED*)
   let chat_and_info = GPack.paned `HORIZONTAL ~packing: vbox#add () in
@@ -181,7 +172,6 @@ let main () = Lwt_main.run(
   (*start with focus on text entry box*)
   ignore(entry#misc#grab_focus ());
 
-  print_endline "FUCK";
   (* Display the windows and enter Gtk+ main loop *)
   window#add_accel_group accel_group;
   window#show ();

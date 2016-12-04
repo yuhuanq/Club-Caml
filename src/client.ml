@@ -159,9 +159,9 @@ let rec handle_incoming_frames ()=
    Note: for tictactoe, string game_msg is in the form:
    opponent_name ^ " " ^ game_cmd *)
 
-let rec repl (chat_buffer:GText.buffer) () =
+let rec repl () =
   lwt ()=Lwt_log.info "in repl" in
-  Gui_helper.msg_insert chat_buffer "[Eric]" "f";
+  Gui_helper.msg_insert "[Eric]" "f";
   lwt directive=Lwt_io.read_line Lwt_io.stdin in
   let cur_topic=option_to_str ((!cur_connection).topic) in
   (let firstletter=directive.[0] in
@@ -181,7 +181,7 @@ let rec repl (chat_buffer:GText.buffer) () =
           |"#change" ->
             let nroom = String.sub directive 8 ((String.length directive)-8) in
             handle_change nroom cur_topic
-            >>repl chat_buffer ()
+            >>repl ()
           |_->
             let partOfDir2 = String.sub directive 0 5 in
             begin
@@ -190,11 +190,11 @@ let rec repl (chat_buffer:GText.buffer) () =
                 let nroom = String.sub directive 6 ((String.length directive)-6) in
                 print_endline ("joining " ^ nroom);
                 handle_join nroom
-                >> repl chat_buffer ()
+                >> repl ()
               |"#game" ->
                 let game_msg = String.sub directive 6 ((String.length directive)-6) in
                 handle_game_client_side game_msg cur_topic
-                >> repl chat_buffer ()
+                >> repl ()
               | _ -> failwith "invalid # command"
             end
         end
@@ -203,7 +203,7 @@ let rec repl (chat_buffer:GText.buffer) () =
     lwt () = Lwt_log.info "Attempting to send message" in
     handle_send directive cur_topic ) >>
     lwt () =  Lwt_log.info "Sent a frame" in
-    repl chat_buffer ()
+    repl ()
 
 let handle_connection () =
   let rec loop () =
@@ -213,7 +213,7 @@ let handle_connection () =
   in
   loop ()
 
-let main ipstring (chat_buffer:GText.buffer)  =
+let main ipstring =
   try_lwt
     let inet_addr : Lwt_unix.inet_addr = Unix.inet_addr_of_string ipstring in
     let addr = Lwt_unix.ADDR_INET (inet_addr,port) in
@@ -236,7 +236,7 @@ let main ipstring (chat_buffer:GText.buffer)  =
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
     Protocol.read_frame ic >>= f >>= fun fr ->
     Lwt.async handle_connection;
-    repl chat_buffer ()
+    repl ()
   (*Lwt_log.info "completed both loops?"*)
   (* f >> repl () *)
   with
