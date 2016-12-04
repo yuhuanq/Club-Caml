@@ -23,7 +23,6 @@ let enter_cb entry () =
  * output using Gui_helper.msg_insert
  *)
   ignore_result (Client.process entry#text);
-
   entry#set_text "" (*clear user text entry*)
 
 (*-----------------MAIN LOOP-----------------*)
@@ -127,11 +126,18 @@ let main () = Lwt_main.run(
   scrolled_window#set_hpolicy `NEVER;
   scrolled_window#set_vpolicy `AUTOMATIC;
 
-  let chat_view = GText.view ~wrap_mode:`WORD ~editable:false
+  let chat_view = GText.view ~wrap_mode:`CHAR ~editable:false
                              ~cursor_visible:false
                              ~packing:scrolled_window#add () in
 
   ignore(chat_view#set_buffer chat_buffer);
+  (*upon chat buffer change, scroll to lowest possible place*)
+  ignore(
+    ignore(chat_buffer#connect#changed
+      (fun () -> ignore(chat_view#scroll_to_iter (chat_buffer#end_iter))));
+    ()
+  );
+
 
   (*Users in room stuff*)
   let scrolled_usr = GBin.scrolled_window ~packing:chat_and_info#add () in
