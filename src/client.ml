@@ -133,13 +133,30 @@ let handle_game_client_side game_msg cur_topic =
   let gameframe = Protocol.make_game cur_topic game_msg sender in
   send_frame gameframe (!cur_connection).output
 
+(* TODO: TERMINAL USER INTERFACE! *)
+let cmd_stats fr =
+  (* TODO *)
+  failwith "unimplemented"
+
+let cmd_error fr =
+  (* TODO *)
+  failwith "unimplemented"
+
+let cmd_message fr =
+  (* TODO *)
+  failwith "unimplemented"
+
+let cmd_gameresp fr =
+  (* TODO *)
+  failwith "unimplemented"
+
 (* TODO: handle incoming messages*)
 let rec handle_incoming_frames ()=
   lwt () = Lwt_log.info "Inside handle_incoming_frames" in
   let ic = (!cur_connection).input in
   Protocol.read_frame ic >>= fun fr ->
   match fr.cmd with
-  | MESSAGE-> Lwt_log.info "received MESSAGE frame">>
+  | MESSAGE-> Lwt_log.info "received MESSAGE frame" >>
     Lwt_log.info ("body of frame recvd: " ^ fr.body)
   | ERROR-> Lwt_log.info "received ERROR frame"
   | STATS -> Lwt_log.info "received STATS frame"
@@ -188,8 +205,6 @@ let rec repl () =
 let handle_connection () =
   let rec loop () =
     handle_incoming_frames () >>= loop
-    (* and ()=repl () in *)
-    (* Lwt_log.info "Completed both loops?">> loop () *)
   in
   loop ()
 
