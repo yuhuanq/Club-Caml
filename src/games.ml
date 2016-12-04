@@ -8,15 +8,24 @@
 (* For now games.ml only has tictactoe. Will expand games by making a general
 Games module with submodules like module Tictactoe. *)
 
-open ANSITerminal
-
-(* game_state is the current state of the game. *)
-type game_state =
-{
+(* t is the current state of the game. *)
+type t = {
   mutable ended : bool;
   mutable turns : int;
   grid : bool option array array;
 }
+
+let is_over t = t.ended
+
+let instructions =
+  "Tic Tack Toe:
+    The usual rules.
+
+    The board is a 3x3 matrix
+    i,j -> places an X or O at cell i,j
+    i.e.
+    2,3 or 1,1\n"
+
 
 (* move_spec is a format to specify a move or turn to be made.
  * E.g. choosing where to place an x in tic-tac-toe, or making a move in chess
@@ -25,9 +34,9 @@ type move_spec =
 | O of int * int
 | X of int * int
 
-(* [start_game] returns an initialized game state that is the starting point for
+(* [new_game] returns an initialized game state that is the starting point for
  * whichever game we’re playing (for now, tic tac toe) *)
-let start_game () =
+let new_game () =
 {
   ended = false;
   turns = 0;
@@ -77,24 +86,23 @@ let update_on_move state move =
 (* [one_box_to_string b color] takes in a single box of a tic-tac-toe grid
  * object and its color and returns a string representation of it for printing.
  *)
-let one_box_to_string b color =
+let one_box_to_string b =
   match b with
   | None -> " "
   | Some symbol ->
-    if symbol = true
-      then ANSITerminal.sprintf [color] "%s" "O"
-    else
-      ANSITerminal.sprintf [color] "%s" "X"
+    if symbol = true then "O"
+    else "X"
 
-(* [state_to_string state] takes in a game_state [state] and returns a string
+(* [state_to_string state] takes in a t [state] and returns a string
  * representation of it for printing. *)
-let game_state_to_string state =
+let to_string state =
   let sz = Array.length state.grid in
   let buff = Buffer.create ((sz+1)*(sz+1)) in
-  let color = ANSITerminal.on_white in
   for x = 0 to sz - 1 do
     for y = 0 to sz - 1 do
-      Buffer.add_string buff (one_box_to_string state.grid.(x).(y) color)
+      Buffer.add_char buff '|';
+      Buffer.add_string buff (one_box_to_string state.grid.(x).(y));
+      if y=sz-1 then Buffer.add_char buff '|'
     done;
     Buffer.add_string buff "\n"
   done;
@@ -104,12 +112,12 @@ let game_state_to_string state =
  * For debugging. And for when client prints state maybe
  *)
 let print_state state =
-  state |> game_state_to_string |> print_string [Reset]
+  state |> to_string |> print_string
 
-(* [give_updated_game_state cmd state] updates state based on string
+(* [play state cmd] updates state based on string
  * command cmd, where cmd is in the form x,y with any number of spaces.
  * Then it returns the state. *)
-let give_updated_game_state cmd state =
+let play state cmd =
   let cmd' = Str.global_replace (Str.regexp_string " ") "" cmd in
   let (x,y) =
     (int_of_string (String.sub cmd' 0 1),
@@ -118,3 +126,4 @@ let give_updated_game_state cmd state =
     then (update_on_move state (O(x,y)); state)
   else
     (update_on_move state (X(x,y)); state)
+

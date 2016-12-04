@@ -19,7 +19,7 @@ type command = | SEND
                | MESSAGE
                | RECEIPT
                | ERROR
-               | INFO
+               | STATS
                | GAME
                | GAME_RESP
 
@@ -89,8 +89,8 @@ val make_message     : string -> string -> string -> string -> frame
 (* [make_error] is a STOMP ERROR frame *)
 val make_error       : string -> string -> frame
 
-val make_info : (string * string) list -> frame
+val make_stats  : (string * string) list -> frame
 
 val make_game        : string -> string -> string -> frame
 
-val make_game_resp   : string -> string -> string -> frame
+val make_game_message   : string -> string * string -> string -> frame
