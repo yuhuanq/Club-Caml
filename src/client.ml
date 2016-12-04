@@ -133,22 +133,30 @@ let handle_game_client_side game_msg cur_topic =
   let gameframe = Protocol.make_game cur_topic game_msg sender in
   send_frame gameframe (!cur_connection).output
 
-(* TODO: TERMINAL USER INTERFACE! *)
-let cmd_stats fr =
-  (* TODO *)
+(* TODO *)
+let rec_stats fr =
+  (* headers of stats frame is an assoc list of Topics x num subscribers *)
   failwith "unimplemented"
 
-let cmd_error fr =
+let rec_error fr =
   (* TODO *)
+  (* let short = Protocol.get_header fr "message" in  *)
   failwith "unimplemented"
 
-let cmd_message fr =
-  (* TODO *)
-  failwith "unimplemented"
+let rec_message fr =
+  let sender = Protocol.get_header fr "sender" in
+  let mid = Protocol.get_header fr "message-id" in
+  let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
+  (* ANSITerminal.print_string [ANSITerminal.cyan] display_str; *)
+  (* Lwt_io.print display_str *)
+  Notty.I.string (Notty.A.bg Notty.A.cyan) display_str |> Notty_lwt.output_image_endline
+  (* return_unit *)
 
-let cmd_gameresp fr =
-  (* TODO *)
-  failwith "unimplemented"
+let rec_game_message fr =
+  (* instructions may = "" *)
+  let instructions = Protocol.get_header  fr "instructions" in
+  Lwt_log.info instructions >> Lwt_log.info fr.body
+
 
 (* TODO: handle incoming messages*)
 let rec handle_incoming_frames ()=
@@ -157,12 +165,15 @@ let rec handle_incoming_frames ()=
   Protocol.read_frame ic >>= fun fr ->
   match fr.cmd with
   | MESSAGE-> Lwt_log.info "received MESSAGE frame" >>
-    Lwt_log.info ("body of frame recvd: " ^ fr.body)
+    Lwt_log.info ("received message body: " ^ fr.body)
+    >> rec_message fr
+    (* >>= fun () -> begin rec_message fr; return_unit end *)
+    (* let () = rec_message fr in *)
+    (* return_unit *)
   | ERROR-> Lwt_log.info "received ERROR frame"
   | STATS -> Lwt_log.info "received STATS frame"
   | GAME_RESP -> Lwt_log.info "received GAME_RESP frame."
-  | _ -> Lwt_log.info ("received a frame of type not expected") >>
-    handle_incoming_frames ()
+  | _ -> Lwt_log.info ("received a frame of type not expected")
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
