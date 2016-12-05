@@ -172,13 +172,19 @@ let rec_message fr =
   let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
   print_to_gui display_str
 
+let current_time ()=
+  let unixtime=Unix.localtime (Unix.gettimeofday ()) in
+  let hr=string_of_int unixtime.tm_hour in
+  let min=string_of_int unixtime.tm_min in
+  let sec=string_of_int unixtime.tm_sec in
+  hr^":"^min^":"^sec
 
 let rec_gmessage fr =
   (* instructions may = "" *)
   let instructions = Protocol.get_header fr "instructions" in
   let players = (Protocol.get_header fr "player1") ^ " vs " ^ (Protocol.get_header fr
   "player2")  in
-  let display_str = " < " ^ (string_of_float (Unix.gettimeofday ())) ^ " > " ^ players ^ " :\n" ^ fr.body in
+  let display_str = " < " ^ (current_time ()) ^ " > " ^ players ^ " :\n" ^ fr.body in
   (*
    * Notty.I.string (Notty.A.fg Notty.A.cyan) instructions |>
    * Notty_lwt.output_image_endline >>= fun () ->
