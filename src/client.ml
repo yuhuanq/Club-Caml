@@ -460,8 +460,8 @@ let main (ipstring:string) (login:string) (port:int) =
     handle_connection ()
   with
   | Failure _ ->
-    return (ANSITerminal.(print_string [red]
-                            "\n\nError. Malformed IP Address.\n"))
-  | _ -> return (print_endline "Some other error")
+    Lwt_log.info "\n\nError.Malformed IP Address.\n"
+  | _ ->
+    Lwt_log.info "Some other error"
 
 let () = Lwt_log.add_rule "*" Lwt_log.Info

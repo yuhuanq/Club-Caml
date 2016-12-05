@@ -200,7 +200,6 @@ let read_frame ic =
     read_headers [] >>=
     (fun lst ->
        try
-         let () = print_list lst in
          let read_len = List.assoc "content-length" lst in
          let read_len = int_of_string read_len in
          let bytebuf = Bytes.create read_len in
