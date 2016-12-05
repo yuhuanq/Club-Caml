@@ -127,6 +127,12 @@ let handle_send msg cur_topic : unit Lwt.t =
   lwt () = Lwt_log.info "About to send the sendframe" in
   send_frame sendframe (!cur_connection).output
 
+let handle_private_message uname msg=
+  let pri_topic="/private/"^uname in
+  let sendframe = make_send pri_topic msg in
+  lwt () = Lwt_log.info "About to send the private sendframe" in
+  send_frame sendframe (!cur_connection).output
+
 let handle_play ?(opp=None) challenge cmd cur_topic =
   (* dest opp game_cmd *)
   match opp with
@@ -196,8 +202,6 @@ let rec_gmessage fr =
   Lwt_io.print display_str >>
   return (Gui_helper.msg_insert "" display_str)
 
-let handle_private_message uname=
-  failwith ("Unimplemented")
 
 (* TODO: handle incoming messages*)
 let rec handle_incoming_frames ()=
@@ -265,12 +269,6 @@ let rec repl () =
               else
                 Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
                 >> repl ()
-            else if dir= "#PM" then
-              if (is_valid_uname arg1) then
-                handle_private_message arg1 >>repl ()
-              else
-                Lwt_io.print "User name is not valid (Must be between 1 and 9 characters).\n"
-                >> repl ()
             else if dir = "#play" then
               (* TODO: resign *)
               handle_play "false" arg1 cur_topic >> repl ()
@@ -283,6 +281,12 @@ let rec repl () =
           Lwt_io.print "in dir;arg1;arg2 match case" >>
           if dir = "#play" && arg1 = "challenge" then
             handle_play ~opp:(Some arg2) "true" "" cur_topic >> repl ()
+          else if dir= "#pm" then
+            if (is_valid_uname arg1) then
+              handle_private_message arg1 arg2>>repl ()
+            else
+              Lwt_io.print "User name is not valid (Must be between 1 and 9 characters).\n"
+              >> repl ()
           else
             Lwt_io.print "Invalid directive command" >> repl ()
         end
@@ -340,6 +344,12 @@ let rec process raw_input =
         | Some t ->
           if dir = "#play" && arg1 = "challenge" then
             handle_play ~opp:(Some arg2) "true" "" cur_topic >> repl ()
+          else if dir= "#pm" then
+            if (is_valid_uname arg1) then
+              handle_private_message arg1 arg2>>repl ()
+            else
+              Lwt_io.print "User name is not valid (Must be between 1 and 9 characters).\n"
+              >> repl ()
           else
             Lwt_io.print "Invalid directive command" >> repl () end
     | _ ->

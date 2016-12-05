@@ -251,8 +251,9 @@ let handle_send frame conn =
   try_lwt
     let topic = Protocol.get_header frame "destination" in
     if Str.string_match topic_re topic 0 then handle_send_topic frame conn
-    else if Str.string_match private_re topic 0 then handle_send_private frame
-    conn
+    else if Str.string_match private_re topic 0 then
+    lwt ()=Lwt_log.info "Did receive a request for a private message" in
+    handle_send_private frame conn
     else failwith "Invalid send destination"
   with
     Not_found ->
