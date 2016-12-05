@@ -15,11 +15,11 @@ robustness and scalability.
 
 `make server` to compile the server
 
-### Required packages
+### Required opam packages
 
 ```
 lwt v2.5.2
-lablgtk v2.18.5
+lablgtk v2.18.5 (note that the gtk+2.0 package must be installed)
 camlp4 v4.03+1
 cohttp v0.21.0
 xml-light v2.4
@@ -37,4 +37,3 @@ Once in the lobby, one can select different chatrooms to join, including a
 chatbot.
 
 Invoke `#help` to see a list of directives.
-
