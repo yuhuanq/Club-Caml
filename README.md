@@ -1,40 +1,48 @@
 # Club Caml
 
+![](https://github.com/yuhuanq/Club-Caml/master/ex.gif)
+
 Chat, Play, Socialize.
 
 STOMP and IRC inspired Instant Messaging Client and Server Application.
 
-The goal was to implement an existing Messaging Protocol (STOMP) and extend it.
-The client goal was a minimalistic graphical user interface. Server goal is
-robustness and scalability.
-
 ## Compilation
 `make all` to compile both the client and server
 
-`make client`
+`make client` to compile the client
 
-`make server`
+`make server` to compile the server
 
-`make install`
-
-### Required packages
+### Required opam packages
 
 ```
-lwt
-lablgtk
-camlp4o
-cohttp
-xml-light
+lwt v2.5.2
+lablgtk v2.18.5
+camlp4 v4.03+1
+cohttp v0.21.0
+xml-light v2.4
+notty v0.1.1
 ```
 
 ## Overview
 
-To start the server, run i.e. `bin/camlserver --verbose`.
+To start the server, run i.e. `./camlserver --verbose`.
 
-`bin/camlclient` for the client.
+`./camlclient` for the client.
 
-The client will prompt you for a username and you will then arrive in the lobby
-where you can select different chatrooms to join, including a chatbot.
+The client will prompt one for a username and address/port combination.
+Once in the lobby, one can select different chatrooms to join, including a
+chatbot.
 
 Invoke `#help` to see a list of directives.
+
+##Fun Things to try
+
+####Chatbot room
+
+Join the chatbot room to talk with
+a chat bot!
+
+####Easter eggs
+Try sending "😶" for something interesting! ;)
 
