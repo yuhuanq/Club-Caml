@@ -188,6 +188,8 @@ let rec_gmessage fr =
   Lwt_io.print display_str >>
   return (Gui_helper.msg_insert "" display_str)
 
+let handle_private_message uname=
+  failwith ("Unimplemented")
 
 (* TODO: handle incoming messages*)
 let rec handle_incoming_frames ()=
@@ -223,6 +225,9 @@ let dir_re = Str.regexp "#"
 let is_valid_rmname topic =
   if String.length topic > 50 || String.length topic < 1 then false else true
 
+let is_valid_uname topic =
+  if String.length topic > 9 || String.length topic < 1 then false else true
+
 let rec repl () =
   lwt () = Lwt_log.info "in repl" in
   lwt raw_input = Lwt_io.read_line Lwt_io.stdin in
@@ -251,6 +256,12 @@ let rec repl () =
                 handle_change ("/topic/"^arg1) cur_topic >> repl ()
               else
                 Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
+                >> repl ()
+            else if dir= "#PM" then
+              if (is_valid_uname arg1) then
+                handle_private_message arg1 >>repl ()
+              else
+                Lwt_io.print "User name is not valid (Must be between 1 and 9 characters).\n"
                 >> repl ()
             else if dir = "#play" then
               (* TODO: resign *)
