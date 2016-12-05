@@ -349,7 +349,9 @@ let handle_unsubscribe frame conn =
       send_all conns' left_message >>
       (* TODO: *)
       let stat_frame = Protocol.make_stats "room_inhabitants" (room_subs topic) in
-      (* update eveyrones userlist *)
+      let stat_frame_num = Protocol.make_stats "num_in_rooms" (room_nums ()) in
+      Protocol.send_frame stat_frame_num conn.output >>
+      (* update eveyrone elses userlist *)
       send_all conns' stat_frame >>
       if conns' = CSET.empty then
         begin
