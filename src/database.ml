@@ -47,10 +47,10 @@ let insert db tb_name data =
   | Sqlite3.Rc.OK -> ()
   | _ -> raise (DB_exn(errmsg db))
 
-(* [delete db tb_name data] deletes data from the given table in the given database
+(* [delete_from db tb_name data] deletes data from the given table in the given database
  * and returns a return code. Raises exception if
  * table is not deleted properly. *)
-let delete db tb_name data =
+let delete_from db tb_name data =
   let statement = "DELETE FROM " ^ tb_name ^ "WHERE " in
   let rec make_delete_stmt stmt lst =
     match lst with
@@ -61,6 +61,13 @@ let delete db tb_name data =
       else
         make_delete_stmt (stmt ^ k ^ "=" ^ v ^ " AND ") t in
   let statement = make_delete_stmt statement data in
+  match exec db statement with
+  | Sqlite3.Rc.OK -> ()
+  | _ -> raise (DB_exn(errmsg db))
+
+(* [delete_table db tb_name] deletes table from the given database. *)
+let delete_table db tb_name =
+  let statement = "DROP TABLE " ^ tb_name in
   match exec db statement with
   | Sqlite3.Rc.OK -> ()
   | _ -> raise (DB_exn(errmsg db))

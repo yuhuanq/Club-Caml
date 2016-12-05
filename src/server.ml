@@ -9,20 +9,6 @@
 (* Reminder:
 1. Need to finish implementing flushing in server *)
 
-(* To keep track of the stuff I'm doing, I am writing this. Will erase
-once I am done with games and DB. *)
-(* How Game works (Done except step 5)
-1. Command starting with #game is written on repl
-2. Client makes a game frame containing the command's information and
-sends it to server
-3. Server accepts the game frame, updates its internal data structure containing
-data for all games that are currently being played.
-4. Server makes a game_resp frame containing a string representation
-of the updated game state and sends it to client
-5. Client accepts the game_resp frame and prints the game state on the user's
-terminal using the string representation of the game state in game_resp frame.
-*)
-
 (* How Database works:
 2. Client makes a DATA frame containing the command's information and sends it
 to server
@@ -32,6 +18,7 @@ units of data that server has stored in its internal data structure, then
 
 open Lwt
 open Protocol
+open Database
 
 let (>>|) = (>|=)
 
@@ -99,6 +86,7 @@ type state = {
   mutable map : (string,CSET.t) H.t;
   mutable map_msg : (string, MSET.t) H.t;
   mutable games : (string,game_state) H.t;
+  mutable dbase : Sqlite3.db
 }
 
 let persist_topics =
@@ -122,6 +110,7 @@ let state = {
   map = H.create 10;
   map_msg = H.create 20;
   games = H.create 20;
+  dbase = Database.initialize "chathistory.db"
 }
 
 (* [clean_state] resets the state to default values *)
@@ -191,6 +180,23 @@ let handle_chatbot frame conn =
   Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
   (CSET.elements conns)
 
+(* [flush_map_message msgset topic limit] flushes msg/chat history for topic
+ * (set of messages) to the database if the size of this set exceeds the given
+ * limit. Also empties the corresponding data in map_msg.
+*)
+let flush_chat_history msgset topic limit =
+  if List.length (MSET.elements msgset) >= limit then
+    let helper msg =
+      Database.insert state.dbase
+        (topic ^ " history")
+        [(string_of_float msg.id); msg.conn.username; msg.content] in
+    MSET.iter helper msgset;
+    H.replace state.map_msg topic MSET.empty;
+    Lwt_log.info ("flushed chat history for " ^ topic ^ " to disk.") >>
+    return_unit
+  else
+    return_unit
+
 let handle_send_topic frame conn =
   let topic = Protocol.get_header frame "destination" in
   if topic = "/topic/Chatbot" then handle_chatbot frame conn else
@@ -210,6 +216,7 @@ let handle_send_topic frame conn =
     Lwt_list.iter_p (fun conn -> Protocol.send_frame message_frame conn.output)
     (CSET.elements conns) >>
     Lwt_log.info ("sent a MESSAGE frame to destination: " ^ topic) >>
+    flush_chat_history msg_objs' topic 10 >>
     return_unit
 
 let handle_send_private frame conn =
@@ -284,6 +291,11 @@ let handle_subscribe frame conn =
         let msgs = MSET.empty in
         H.add state.map topic conns;
         H.add state.map_msg topic msgs;
+        Database.make_table state.dbase (topic ^ " history")
+          "TIME FLOAT,
+           MSG VARCHAR (20),
+           PRIMARY KEY (TIME)
+          ";
         Lwt_log.info ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "
                        subscribed to " ^ topic) >>
         let message = Protocol.make_message topic (string_of_float
@@ -559,15 +571,3 @@ let run_server () =
   clean_state ();
   let serve = create_server () in
   Lwt_main.run @@ serve ()
-
-(* [flush_map_message map_message] flushes chat history stored in map_message to
- * the database if the size of the chat history exceeds the limit. It's incomplete
-*)
-(* let flush_map_message map_message limit =
-   let helper topic msgset =
-   if List.length (MSET.elements msgset) >= limit
-   then (* flush; *) ignore_result (Lwt_log.info ("flushing to disk: " ^ topic))
-   else () in
-   H.iter helper map_message;
-   return () *)
-

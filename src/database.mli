@@ -22,7 +22,10 @@ val make_table: Sqlite3.db -> string -> string -> unit
  * table is not inserted properly. *)
 val insert: Sqlite3.db -> string -> string list -> unit
 
-(* [delete db tb_name data] deletes data from the given table in the given database
- * and returns a return code. Raises exception if
- * table is not deleted properly. *)
-val delete: Sqlite3.db -> string -> (string * string) list -> unit
+(* [delete_from db tb_name data] deletes data from the given table in the given
+ * database and returns a return code. Raises exception if data is not
+ * deleted properly. *)
+val delete_from: Sqlite3.db -> string -> (string * string) list -> unit
+
+(* [delete_table db tb_name] deletes table from the given database. *)
+val delete_table: Sqlite3.db -> string -> unit 
