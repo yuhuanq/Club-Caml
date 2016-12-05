@@ -13,7 +13,8 @@ let game_tag =
 
 let id_tag =
   let temp = GText.tag ~name:"msg_id_tag"() in
-  temp#set_property (`WEIGHT (`BOLD));temp
+  temp#set_property (`WEIGHT (`BOLD));
+  temp
 
 let casted_id_tag = id_tag#as_tag
 let casted_game_tag = game_tag#as_tag
@@ -22,6 +23,9 @@ let tag_table =
   let init_tag_table = GText.tag_table () in
   init_tag_table#add casted_id_tag;init_tag_table#add casted_game_tag;
   init_tag_table
+
+let caml_pixbuf = GdkPixbuf.from_file_at_size "images/ocaml.png" 125 125
+let clarkson_pixbuf = GdkPixbuf.from_file_at_size "images/clarkson.png" 125 125
 
 let chat_buffer = GText.buffer ~tag_table:tag_table
                               ~text:"Welcome to Club Caml!\n" ()
@@ -35,7 +39,7 @@ let string_list_conv =
   {kind=`STRING;
    proj=(fun x -> match x with
                   |`STRING y -> y
-                  |_ -> failwith "conve rsion failed! not a string.");
+                  |_ -> failwith "conversion failed! not a string.");
    inj=(fun x -> match x with
                  |Some x -> `STRING (Some x)
                  |None -> `STRING (None) )
@@ -54,21 +58,32 @@ let room_label = GMisc.label
  * printing games (use monospace, bolded font for [msg]),
  * with default value false.*)
 let msg_insert ?is_game:(game_bool=false) (identifier:string) (msg:string)  =
-  if game_bool then
+  if msg = "🐪" then   (*special caml case, get it? hahaha*)
+    begin
+      chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[id_tag]
+                        ("\n"^identifier^"\n");
+      chat_buffer#insert_pixbuf chat_buffer#end_iter caml_pixbuf
+    end
+  else if msg = "😶" then
+    begin
+      chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[id_tag]
+                        ("\n"^identifier^"\n");
+      chat_buffer#insert_pixbuf chat_buffer#end_iter clarkson_pixbuf
+    end
+  else if game_bool then
     begin
     chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[id_tag]
                       ("\n"^identifier^" ");
     chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[game_tag]
-                       ("msg")
+                       ("msg");
     end
   else
     begin
     chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[id_tag]
                       ("\n"^identifier^" ");
-    chat_buffer#insert ~iter:chat_buffer#end_iter msg
+    chat_buffer#insert ~iter:chat_buffer#end_iter msg;
     end
 
-  ;adjustment#set_value (adjustment#upper)
 
 (*[clear_chat ()] clears the GUI chat window*)
 let clear_chat () =
@@ -83,7 +98,7 @@ let set_usr_list (user_list:string list) =
     user_list_store#set iter column (Some usr)
   in
   List.iter append_usr user_list
-  
+
 (*[set_room_label room] sets the room label in the gui to [room]*)
 let set_room_label (room:string) =
   room_label#set_label
