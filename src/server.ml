@@ -176,12 +176,9 @@ let handle_chatbot frame conn =
   let botre = Chatbot.ask frame.body in
   let echoMsg = Protocol.make_message topic (current_time ())
     conn.username frame.body in
-  Lwt_log.info ("Bot response is: " ^ botre) >>
   let reply = Protocol.make_message topic
   (current_time ()) "Artificial Conversational Entity" botre in
-  Lwt_log.info "Right before let conns = H.find state.map topic L185" >>
   let conns = H.find state.map topic in
-  Lwt_log.info "Right before Lwt_list.iter_p L187" >>
   send_all conns echoMsg >>
   send_all conns reply
 
@@ -219,7 +216,6 @@ let handle_send frame conn =
     let topic = Protocol.get_header frame "destination" in
     if Str.string_match topic_re topic 0 then handle_send_topic frame conn
     else if Str.string_match private_re topic 0 then
-    lwt ()=Lwt_log.info "Did receive a request for a private message" in
     handle_send_private frame conn
     else failwith "Invalid send destination"
   with
@@ -245,7 +241,6 @@ let option_to_str s=
 (* val handle_subscribe : frame -> connection -> unit Lwt.t  *)
 let handle_subscribe frame conn =
   let topic = Protocol.get_header frame "destination" in
-  lwt () = Lwt_log.info (conn.username ^ " trying to subscribe to " ^ topic) in
   conn.topic<-Some topic;
   let conn' = {conn with topic = Some topic} in
   try_lwt
@@ -256,7 +251,6 @@ let handle_subscribe frame conn =
     let message = Protocol.make_message topic (current_time ()) "SERVER"
       (conn.username ^ " has joined the room.") in
     let stats = Protocol.make_stats "room_inhabitants" (room_subs topic) in
-    lwt () = Lwt_log.info ("Current connection topic " ^ (option_to_str conn.topic)) in
     send_all conns' message >>
     send_all conns' stats
   with Not_found ->
@@ -294,8 +288,6 @@ exception Fail_Unsub
 (* val handle_subscribe : frame -> connection -> unit Lwt.t  *)
 let handle_unsubscribe frame conn =
   let topic = Protocol.get_header frame "destination" in
-  Lwt_log.info ("topic being unsubbed from "^topic)>>
-  Lwt_log.info ("conn's topic is "^ (option_to_str conn.topic))>>
   try_lwt
     match conn.topic with
     | Some s when s = topic ->
@@ -438,7 +430,6 @@ let handle_game frame conn =
     Protocol.send_frame fr conn.output
 
 let handle_frame frame conn =
-  Lwt_log.info "in handle frame" >>
   match frame.cmd with
   | SEND -> Lwt_log.info "Received a SEND frame" >>= fun _ ->
             handle_send frame conn
@@ -543,7 +534,6 @@ let accept_connection (fd, sckaddr) =
       let open Unix in
       string_of_inet_addr inet_addr
     | _ -> "unknown" in
-  Lwt_log.info ("client connected of id" ^ client_id) >>
   let ic = Lwt_io.of_fd Lwt_io.Input fd in
   let oc = Lwt_io.of_fd Lwt_io.Output fd in
   establish_connection ic oc client_id
