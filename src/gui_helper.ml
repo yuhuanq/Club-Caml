@@ -75,7 +75,7 @@ let msg_insert ?is_game:(game_bool=false) (identifier:string) (msg:string)  =
     chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[id_tag]
                       ("\n"^identifier^" ");
     chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[game_tag]
-                       ("msg");
+                       msg;
     end
   else
     begin

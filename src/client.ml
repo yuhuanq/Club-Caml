@@ -55,18 +55,6 @@ let update_topic top =
 let remove_topic () =
   (!cur_connection).topic <- None
 
-
-let rec read_nickname () =
-  ANSITerminal.(print_string [cyan]
-                  "\nPlease choose a nickname or username.\n");
-  print_string "username: ";
-  let nick = read_line () in
-  if String.length nick > 9 || String.length nick < 1 then
-    begin print_endline "Nickname is too short or long";
-    read_nickname () end
-  else
-    nick
-
 let start_connection login pass servFromChannel servToChannel=
   let conframe = Protocol.make_connect login pass in
   let newconn = {input = servFromChannel;
@@ -76,8 +64,6 @@ let start_connection login pass servFromChannel servToChannel=
   cur_connection := newconn;
   Protocol.send_frame conframe newconn.output
 
-let port=9000
-(* we're using the same port on the host machine and on the server*)
 let backlog = 100
 
 let option_to_str s=
@@ -417,7 +403,7 @@ let handle_connection () =
   in
   loop ()
 
-let main ipstring =
+let main (ipstring:string) (login:string) (port:int) =
   try_lwt
     let inet_addr : Lwt_unix.inet_addr = Unix.inet_addr_of_string ipstring in
     let addr = Lwt_unix.ADDR_INET (inet_addr,port) in
@@ -426,7 +412,6 @@ let main ipstring =
     let oc = Lwt_io.of_fd Lwt_io.Output sock in
     let ic = Lwt_io.of_fd Lwt_io.Input sock in
     print_endline "right before read pw";
-    let login = read_nickname () in
     let f = fun x->
       match x.cmd with
       | CONNECTED->
@@ -445,4 +430,3 @@ let main ipstring =
   | _ -> return (print_endline "Some other error")
 
 let () = Lwt_log.add_rule "*" Lwt_log.Info
-

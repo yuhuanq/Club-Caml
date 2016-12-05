@@ -23,7 +23,7 @@ chatbot:
 	ocamlbuild -use-ocamlfind -pkgs xml-light,lwt,lwt.syntax,lwt.unix,cohttp,cohttp.lwt -syntax camlp4o chatbot.byte
 
 gui:
-	ocamlbuild -use-ocamlfind -pkgs notty,notty.lwt,ANSITerminal,str,lwt,lwt.syntax,lwt.unix,lwt.glib,lablgtk2 -syntax camlp4o gui.byte
+	ocamlbuild -use-ocamlfind -pkgs notty,notty.lwt,ANSITerminal,str,lwt,lwt.syntax,lwt.unix,lwt.glib,lablgtk2 -syntax camlp4o gui_entry.byte
 
 test:
 	# ocamlbuild use-ocamlfind -pkgs str,lwt,lwt.unix,oUnit test_protocol.byte && ./test_protocol.byte

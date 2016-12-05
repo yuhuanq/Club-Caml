@@ -248,8 +248,12 @@ let handle_send_private frame conn =
   let recip = List.hd (Str.split private_re dest) in
   let recip_conn = H.find state.user_map recip in
   let message_frame = Protocol.make_message dest mid conn.username msg in
-  Protocol.send_frame message_frame recip_conn.output >>
-  Lwt_log.info ("sent a private MESSAGE frame to destination: " ^ recip)
+  Lwt_list.iter_p (fun conn -> Protocol.send_frame message_frame conn.output)
+  [conn;recip_conn]
+  (*
+   * Protocol.send_frame message_frame recip_conn.output >>
+   * Lwt_log.info ("sent a private MESSAGE frame to destination: " ^ recip)
+   *)
 
 (*
  * [handle_send] handles a SEND frame. A SEND commands sends a message to a
