@@ -5,11 +5,16 @@
 type msg = [`ERROR | `SERVER | `PM | `STATUS | `NORMAL]
 
 (*****These values are used for constructing the GUI*****)
-let color_map = Gdk.Color.get_system_colormap ()
+(*
+let color_map = Gdk.Rgb.get_cmap ()
 let red_gdk = Gdk.Color.alloc ~colormap:color_map (`RGB (204,0,0))
 let blue_gdk = Gdk.Color.alloc ~colormap:color_map (`RGB (30,144,255))
 let purple_gdk = Gdk.Color.alloc ~colormap:color_map (`RGB (174,89,182))
-let green_gdk = Gdk.Color.alloc ~colormap:color_map (`RGB (0,170,85))
+let green_gdk = Gdk.Color.alloc ~colormap:color_map (`RGB (0,170,85)) *)
+let red_gdk = `FOREGROUND "Crimson"
+let blue_gdk =`FOREGROUND "Light Steel Blue"
+let purple_gdk =`FOREGROUND "Medium Purple"
+let green_gdk =`FOREGROUND "Medium Sea Green"
 
 (*[game_tag] is monospace, for better formatting of games*)
 let game_tag =
@@ -21,25 +26,25 @@ let game_tag =
 let error_tag =
   let temp = GText.tag ~name:"error_tag" () in
   temp#set_property (`WEIGHT (`BOLD));
-  temp#set_property (`FOREGROUND_GDK (red_gdk));
+  temp#set_property (red_gdk);
   temp
 
 let server_tag =
   let temp = GText.tag ~name:"server_tag" () in
   temp#set_property (`WEIGHT (`BOLD));
-  temp#set_property (`FOREGROUND_GDK (blue_gdk));
+  temp#set_property (blue_gdk);
   temp
 
 let pm_tag =
-  let temp = GText.tag ~name:"server_tag" () in
+  let temp = GText.tag ~name:"pm_tag" () in
   temp#set_property (`WEIGHT (`BOLD));
-  temp#set_property (`FOREGROUND_GDK (purple_gdk));
+  temp#set_property (purple_gdk);
   temp
 
 let status_tag =
-  let temp = GText.tag ~name:"server_tag" () in
+  let temp = GText.tag ~name:"status_tag" () in
   temp#set_property (`WEIGHT (`BOLD));
-  temp#set_property (`FOREGROUND_GDK (green_gdk));
+  temp#set_property (green_gdk);
   temp
 
 let id_tag =

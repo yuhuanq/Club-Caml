@@ -77,12 +77,13 @@ let shorter_room_name s=
   let slist = Str.split (Str.regexp "[/]+") s in
   List.nth slist 1
 
-(* [print_to_gui] prints the string [display_str] to gui*)
-let print_to_gui display_str=
-  (* Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |> *)
-  (* Notty_lwt.output_image >>= fun () -> *)
+(* [print_to_gui] is a wrapper for Gui_helper.msg_insert. Refer to that
+ * function for documentation*)
+let print_to_gui ?msg_type:(msg_type=`NORMAL) ?is_game:(game_bool=false)
+                 identifier display_str=
   Lwt_io.print display_str >>
-  return (Gui_helper.msg_insert "" display_str)
+  return (Gui_helper.msg_insert ~msg_type:msg_type ~is_game:game_bool
+                                identifier display_str)
 
 (* [handle_leave] sends out an unsubscribe frame when user wants to leave room*)
 let handle_leave cur_topic=
@@ -153,12 +154,12 @@ let rec_stats fr =
     match hdrs with
     (* ALL PRINTS HERE SHOULD BE THE COLOR OF status of rooms and num users*)
     |[]-> let display_str=" To join a room, type in #join [room name]" in
-          lwt ()= print_to_gui display_str in
+          lwt ()= print_to_gui ~msg_type:`STATUS "" display_str in
           return ()
     |(roomtop,numsub)::t->
       let top=String.sub roomtop 7 ((String.length roomtop)-7) in
       let display_str = " " ^ top ^ " room has " ^ numsub ^ " users " in
-      lwt ()= print_to_gui display_str
+      lwt ()= print_to_gui ~msg_type:`STATUS "" display_str
       in
       helper t
   in
@@ -179,7 +180,7 @@ let rec_error fr =
   (* ALL PRINTS HERE SHOULD BE RED*)
   lwt ()=Lwt_log.info "Trying to print the error" in
   let errorbody=fr.body in
-  print_to_gui ("ERROR: "^ " "^errorbody )
+  print_to_gui ~msg_type:`ERROR "" ("ERROR: "^ " "^errorbody )
 
 (* [rec_message] deals with printing the message to the gui when the client gets
 a MESSAGE frame*)
@@ -190,14 +191,17 @@ let rec_message fr =
   (* ALL PRINTS HERE SHOULD BE color-coded. One if destination is private,
   one if sender is Server *)
   if (String.equal sender "SERVER") then
-    let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
-    print_to_gui display_str
+    let id_str = " < " ^ mid ^ " > " ^ sender ^ " : "in
+    let msg = fr.body in
+    print_to_gui ~msg_type:`SERVER id_str msg
   else if (String.equal (String.sub dest 0 9) "/private/")
-    then let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
-    print_to_gui display_str
+    then let id_str = " < " ^ mid ^ " > " ^ sender ^ " : " in
+    let msg = fr.body in
+    print_to_gui ~msg_type:`PM  id_str msg
   else
-    let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
-    print_to_gui display_str
+    let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " in
+    let msg = fr.body in
+    print_to_gui display_str msg
 
 (* [current_time] provides a time stamp in hours,min,sec*)
 let current_time ()=
@@ -210,8 +214,6 @@ let current_time ()=
 (* [rec_gmessage] deals with the activities associated with a game when the
 cleint gets a GAME frame*)
 let rec_gmessage fr =
-  (* ALL PRINTS HERE SHOULD BE game colors*)
-  let instructions = Protocol.get_header fr "instructions" in
   (* instructions repld, see #help *)
   let players = (Protocol.get_header fr "player1") ^ " vs " ^ (Protocol.get_header fr
   "player2")  in
@@ -348,7 +350,7 @@ Directives:
 
 let handle_help () =
   (* ALL PRINTS HERE SHOULD BE color of help, same as server??*)
-  print_to_gui help
+  print_to_gui ~msg_type:`SERVER "" help
 
 (* [process] handles the raw_input from the user and sends the right frames*)
 let rec process raw_input =
@@ -376,7 +378,7 @@ let rec process raw_input =
             else
               begin match !(cur_connection).topic with
               | None ->
-                print_to_gui "Error: Invalid directive."
+                print_to_gui ~msg_type:`ERROR "" "Error: Invalid directive."
               | Some t ->
                 if dir = "#change" then
                   if is_valid_rmname arg1 then
@@ -394,7 +396,7 @@ let rec process raw_input =
     | [dir;arg1;arg2] ->
         begin match !(cur_connection).topic with
         | None ->
-          print_to_gui "Error: Invalid directive."
+          print_to_gui ~msg_type:`ERROR "Error: Invalid directive." ""
         | Some t ->
           if dir = "#play" && arg1 = "challenge" then
             handle_play ~opp:(Some arg2) "true" "" cur_topic >> repl ()
@@ -423,7 +425,8 @@ let rec process raw_input =
   else
     begin match !(cur_connection).topic with
     | None ->
-      print_to_gui "Error: You must be in a room to send a message"
+      print_to_gui ~msg_type:`ERROR ""
+                  "Error: You must be in a room to send a message"
     | Some t ->
       Lwt_log.info "Attempting to send message" >>
       handle_send raw_input cur_topic >>
