@@ -19,6 +19,7 @@ open Lwt
 open Protocol
 open Games
 
+(* type [connection] is the connection between server and client*)
 type connection = {
   input      : Lwt_io.input_channel;
   output     : Lwt_io.output_channel;
@@ -27,34 +28,38 @@ type connection = {
   username   : string
 }
 
+(* type [message] is the format of all messages passed*)
 type message = {
-  id : float; (* The timestamp of the message. Unique identifier for messages with the same destination. *)
+  id : float; (* The timestamp of the message. Unique identifier for messages
+  with the same destination. *)
   conn : connection;
   content : string
 }
 
+(* Syntactic sugar for anonymous binding*)
 let (>>) (dt : unit Lwt.t) f = dt >>= (fun () -> f)
 
-(*initialize client channel to an output that drops everything*)
-(*type client_channel= output_channel ref
-  let cur_channel
-  let (client_channel:output_channel)= null
-*)
-
+(*initialize client channel to an output that drops everything, and an input
+that never reads *)
 let (emptyconn:connection)= {
   input  = Lwt_io.zero;
   output = Lwt_io.null;
   topic  = None; username=""
 }
 
+(* [cur_connection] is the ref to the connection object for this client*)
 let cur_connection = ref emptyconn
 
+(* [update_topic] changes the topic (chatroom) of this connection to [top]*)
 let update_topic top =
   (!cur_connection).topic <- Some top
 
+(* [remove_Topic] changes the topic (chatroom) of this connection to nothing*)
 let remove_topic () =
   (!cur_connection).topic <- None
 
+(* [start_connection] initializes the connection using a login, output and
+input channels*)
 let start_connection login pass servFromChannel servToChannel=
   let conframe = Protocol.make_connect login pass in
   let newconn = {input = servFromChannel;
@@ -66,21 +71,25 @@ let start_connection login pass servFromChannel servToChannel=
 
 let backlog = 100
 
+(* [option_to_str] converts a string option to string*)
 let option_to_str s=
   match s with
   |Some x -> x
   |None -> ""
 
+(* [shorter_room_name] converts a room name of type /topic/Cornell to Cornell*)
 let shorter_room_name s=
   let slist = Str.split (Str.regexp "[/]+") s in
   List.nth slist 1
 
+(* [print_to_gui] prints the string [display_str] to gui*)
 let print_to_gui display_str=
   (* Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |> *)
   (* Notty_lwt.output_image >>= fun () -> *)
   Lwt_io.print display_str >>
   return (Gui_helper.msg_insert "" display_str)
 
+(* [handle_leave] sends out an unsubscribe frame when user wants to leave room*)
 let handle_leave cur_topic=
   lwt ()=Lwt_log.info ("Current room is "^(option_to_str (!cur_connection).topic)) in
   let unsubframe=make_unsubscribe cur_topic in
@@ -89,11 +98,14 @@ let handle_leave cur_topic=
   let ()=remove_topic () in
   Protocol.send_frame unsubframe (!cur_connection).output
 
+(* [handle_quit] sends out a disconnect frame when user wants to quit app*)
 let handle_quit () =
   print_endline "Quitting the application\n";
   let disconframe = make_disconnect in
   Protocol.send_frame disconframe (!cur_connection).output
 
+(* [handle_change] sends out an unsubscribe frame and a subscribe frame when
+user wants to switch from current room to [nroom]*)
 let handle_change nroom cur_topic=
   let unsubframe = make_unsubscribe cur_topic in
   let subframe = make_subscribe nroom in
@@ -102,6 +114,7 @@ let handle_change nroom cur_topic=
   send_frame unsubframe (!cur_connection).output >>
   send_frame subframe (!cur_connection).output
 
+(* [handle_join] sends out a subscribe frame when user wants to join [nroom]*)
 let handle_join nroom=
   lwt ()=Lwt_log.info ("Attempting to join room "^nroom^"\n") in
   let subframe = make_subscribe nroom in
@@ -109,17 +122,21 @@ let handle_join nroom=
   let ()=Gui_helper.set_room_label (shorter_room_name nroom) in
   send_frame subframe (!cur_connection).output
 
+(* [handle_send] sends out a send frame when user messages a room*)
 let handle_send msg cur_topic : unit Lwt.t =
   let sendframe = make_send cur_topic msg in
   lwt () = Lwt_log.info "About to send the sendframe" in
   send_frame sendframe (!cur_connection).output
 
+(* [handle_private_message] sends out a send frame when user messages one
+person [uname] privately*)
 let handle_private_message uname msg=
   let pri_topic="/private/"^uname in
   let sendframe = make_send pri_topic msg in
   lwt () = Lwt_log.info "About to send the private sendframe" in
   send_frame sendframe (!cur_connection).output
 
+(* [handle_play] sends out a game frame when user wants to play a game*)
 let handle_play ?(opp=None) challenge cmd cur_topic =
   (* dest opp game_cmd *)
   match opp with
@@ -130,7 +147,8 @@ let handle_play ?(opp=None) challenge cmd cur_topic =
       let fr = Protocol.make_game cur_topic challenge o cmd in
       Protocol.send_frame fr (!cur_connection).output
 
-(* print stats, print error, message to private*)
+(*[rec_stats] deals with printing the number of people in each room, or the list
+of poeple in each room when the client gets a STATS frame*)
 let rec_stats fr =
   (* headers of stats frame is an assoc list of Topics x num subscribers *)
   (*let hdrs=fr.headers in*)
@@ -159,19 +177,23 @@ let rec_stats fr =
   else
     Lwt_log.info "to be implemented"
 
-
+(* [rec_error] deals with printing error to the gui when the client gets an
+ERROR frame*)
 let rec_error fr =
   (*let short = Protocol.get_header fr "message" in*)
   lwt ()=Lwt_log.info "Trying to print the error" in
   let errorbody=fr.body in
   print_to_gui ("ERROR: "^ " "^errorbody )
 
+(* [rec_message] deals with printing the message to the gui when the client gets
+a MESSAGE frame*)
 let rec_message fr =
   let sender = Protocol.get_header fr "sender" in
   let mid = Protocol.get_header fr "message-id" in
   let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
   print_to_gui display_str
 
+(* [current_time] provides a time stamp in hours,min,sec*)
 let current_time ()=
   let unixtime=Unix.localtime (Unix.gettimeofday ()) in
   let hr=string_of_int unixtime.tm_hour in
@@ -179,6 +201,8 @@ let current_time ()=
   let sec=string_of_int unixtime.tm_sec in
   hr^":"^min^":"^sec
 
+(* [rec_gmessage] deals with the activities associated with a game when the
+cleint gets a GAME frame*)
 let rec_gmessage fr =
   (* instructions may = "" *)
   let instructions = Protocol.get_header fr "instructions" in
@@ -196,7 +220,8 @@ let rec_gmessage fr =
   return (Gui_helper.msg_insert "" display_str)
 
 
-(* TODO: handle incoming messages*)
+(* [handle_incoming_frames] is a continuously executing function to deal with
+incoming frames *)
 let rec handle_incoming_frames ()=
   lwt () = Lwt_log.info "Inside handle_incoming_frames" in
   let ic = (!cur_connection).input in
@@ -215,24 +240,30 @@ let rec handle_incoming_frames ()=
   | _ -> Lwt_log.info ("received a frame of type not expected")
 
 
-(* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
+(* LIST OF DIRECTIVES
+   [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
    [#join nroom] joins a new room (requires not in any room currently)
    [#game game_msg] plays a game
    [#chatbot] changes to chatbot room
+   [#pm user msg] sends the msg to only the user
    [#quit] closes the connection to server
    Note: only change, leave, join, quit, game implemented
    Note: for tictactoe, string game_msg is in the form:
    opponent_name ^ " " ^ game_cmd *)
 
+(* Regex for start of every directive*)
 let dir_re = Str.regexp "#"
 
+(*[is_valid_rmname] checks validity of room name*)
 let is_valid_rmname topic =
   if String.length topic > 50 || String.length topic < 1 then false else true
 
+(*[is_valid_uname] checks validity of user name*)
 let is_valid_uname topic =
   if String.length topic > 9 || String.length topic < 1 then false else true
 
+(* [repl] is the read-eval-print-loop that reads from user input*)
 let rec repl () =
   lwt () = Lwt_log.info "in repl" in
   lwt raw_input = Lwt_io.read_line Lwt_io.stdin in
@@ -319,6 +350,7 @@ Directives:
 let handle_help () =
   print_to_gui help
 
+(* [process] handles the raw_input from the user and sends the right frames*)
 let rec process raw_input =
   let cur_topic = option_to_str ((!cur_connection).topic) in
   if Str.string_match dir_re raw_input 0 then
@@ -397,12 +429,16 @@ let rec process raw_input =
       handle_send raw_input cur_topic >>
       Lwt_log.info "Sent a frame" end
 
+(* [handle_connection] is the looping function that makes it possible to handle
+incoming frames*)
 let handle_connection () =
   let rec loop () =
     handle_incoming_frames () >>= loop
   in
   loop ()
 
+(* [main] is the main method for client.ml which establishes a connection and
+gets the loop started*)
 let main (ipstring:string) (login:string) (port:int) =
   try_lwt
     let inet_addr : Lwt_unix.inet_addr = Unix.inet_addr_of_string ipstring in
