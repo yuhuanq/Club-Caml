@@ -24,8 +24,11 @@ let is_valid_ip_addr (ip_string:string) =
   | Failure _ -> false
 
 let is_valid_port (port:string) =
-  let port = int_of_string port in
-  (port >= 1024 && port <= 49151)
+  try
+    let port = int_of_string port in
+    (port >= 1024 && port <= 49151)
+  with
+  |Failure _ -> false
 
 (*[process usr] checks if [usr] is empty. if so, returns an anonymous user
  *string (e.g. anon1917). else, return [usr] *)
