@@ -104,7 +104,7 @@ let handle_change nroom cur_topic=
   send_frame subframe (!cur_connection).output
 
 let handle_join nroom=
-  print_endline ("Attempting to join room "^nroom^"\n");
+  lwt ()=Lwt_log.info ("Attempting to join room "^nroom^"\n") in
   let subframe = make_subscribe nroom in
   let ()=update_topic nroom in
   send_frame subframe (!cur_connection).output
@@ -135,10 +135,13 @@ let rec_stats fr =
   let hdrs=fr.headers in
   let rec helper hdrs=
     match hdrs with
-    |[]-> return ()
-    |(top,numsub)::t->
-      let display_str = " < " ^ top ^ " > room has " ^ numsub ^ " users " ^ fr.body in
-      lwt()= print_to_gui display_str
+    |[]-> let display_str=" To join a room, type in #join [room name]" in
+          lwt ()= print_to_gui display_str in
+          return ()
+    |(roomtop,numsub)::t->
+      let top=String.sub roomtop 7 ((String.length roomtop)-7) in
+      let display_str = " " ^ top ^ " room has " ^ numsub ^ " users " in
+      lwt ()= print_to_gui display_str
       in
       helper t
   in helper hdrs
@@ -226,13 +229,14 @@ let rec repl () =
           begin
             if dir = "#join" then
               if is_valid_rmname arg1 then
-                handle_join arg1 >> repl ()
+                let rmname=("/topic/"^arg1) in
+                handle_join rmname >> repl ()
               else
                 Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
                 >> repl ()
             else if dir = "#change" then
               if is_valid_rmname arg1 then
-                handle_change arg1 cur_topic >> repl ()
+                handle_change ("/topic/"^arg1) cur_topic >> repl ()
               else
                 Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
                 >> repl ()
@@ -275,13 +279,14 @@ let rec process raw_input =
           begin
             if dir = "#join" then
               if is_valid_rmname arg1 then
-                handle_join arg1 >> repl ()
+                let rmname=("/topic/"^arg1) in
+                handle_join rmname >> repl ()
               else
                 Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
                 >> repl ()
             else if dir = "#change" then
               if is_valid_rmname arg1 then
-                handle_change arg1 cur_topic >> repl ()
+                handle_change ("/topic/"^arg1) cur_topic >> repl ()
               else
                 Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
                 >> repl ()
