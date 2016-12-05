@@ -293,21 +293,19 @@ let rec process raw_input =
     let wdlst = Str.split (Str.regexp "[ \t]+") raw_input in
     match wdlst with
     | [dir] ->
-        Lwt_io.print "in dir mc" >>
         if dir = "#quit" then handle_quit ()
         else if dir = "#leave" then handle_leave cur_topic
         else if dir = "#help" then handle_help ()
-        else Lwt_io.print "Invalid directive"
+        else print_to_gui ~msg_type:`ERROR "" "Error: Invalid directive."
     | [dir;arg1] ->
-        (* TODO: Lwt_io.print *)
-          Lwt_io.print "in dir;arg1 match case" >>
           begin
             if dir = "#join" then
               if is_valid_rmname arg1 then
                 let rmname=("/topic/"^arg1) in
                 handle_join rmname
               else
-                Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
+                print_to_gui ~msg_type:`ERROR "" ("Room name is not valid" ^
+                "Must be between 1 and 50 characters.\n")
             else
               begin match !(cur_connection).topic with
               | None ->
@@ -317,18 +315,20 @@ let rec process raw_input =
                   if is_valid_rmname arg1 then
                     handle_change ("/topic/"^arg1) cur_topic
                   else
-                    Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
+                    print_to_gui ~msg_type:`ERROR "" ("Room name is not valid" ^
+                    "Must be between 1 and 50 characters.\n")
                 else if dir = "#play" then
                   (* TODO: resign *)
                   handle_play "false" arg1 cur_topic
                 else
-                  Lwt_io.print "Invalid directive command" end
+                  print_to_gui ~msg_type:`ERROR "" ("Invalid directive.")
+              end
           end
 (* let handle_play ?(opp=None) challenge cmd cur_topic = *)
     | [dir;arg1;arg2] ->
         begin match !(cur_connection).topic with
         | None ->
-          print_to_gui ~msg_type:`ERROR "Error: Invalid directive." ""
+          print_to_gui ~msg_type:`ERROR "" "Error: Invalid directive."
         | Some t ->
           if dir = "#play" && arg1 = "challenge" then
             handle_play ~opp:(Some arg2) "true" "" cur_topic
@@ -336,22 +336,23 @@ let rec process raw_input =
             if (is_valid_uname arg1) then
               handle_private_message arg1 arg2
             else
-              Lwt_io.print "User name is not valid (Must be between 1 and 9 characters).\n"
+              print_to_gui ~msg_type:`ERROR "" ("Username is not valid ^
+              (Must be between 1 and 9 characters).\n")
           else
-            Lwt_io.print "Invalid directive command" end
+            print_to_gui ~msg_type:`ERROR "" "Error: Invalid directive."
+        end
     | dir::arg1::t ->
-      Lwt_io.print "in 3 arg mc" >>
       if dir= "#pm" then
         if (is_valid_uname arg1) then
           let arg2=String.concat " " t in
           handle_private_message arg1 arg2
         else
-          Lwt_io.print "User name is not valid (Must be between 1 and 9 characters).\n"
+          print_to_gui ~msg_type:`ERROR "" ("Username is not valid ^
+          (Must be between 1 and 9 characters).\n")
       else
-        Lwt_io.print "Invalid directive command"
+        print_to_gui ~msg_type:`ERROR "" ("Invalid directive.")
     |_->
-      Lwt_io.print "in _ mc" >>
-      Lwt_io.print "Invalid directive command"
+      print_to_gui ~msg_type:`ERROR "" ("Invalid directive.")
   else
     begin match !(cur_connection).topic with
     | None ->
