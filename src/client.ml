@@ -140,8 +140,9 @@ let rec_stats fr =
 
 
 let rec_error fr =
-  let short = Protocol.get_header fr "message" in
-  print_to_gui ("ERROR: "^short)
+  (*let short = Protocol.get_header fr "message" in*)
+  let errorbody=fr.body in
+  print_to_gui ("ERROR: "^ " "^errorbody )
 
 let rec_message fr =
   let sender = Protocol.get_header fr "sender" in
