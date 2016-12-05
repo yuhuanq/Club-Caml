@@ -176,9 +176,12 @@ let handle_chatbot frame conn =
   let botre = Chatbot.ask frame.body in
   let echoMsg = Protocol.make_message topic (current_time ())
     conn.username frame.body in
+  Lwt_log.info ("Bot response is: " ^ botre) >>
   let reply = Protocol.make_message topic
   (current_time ()) "Artificial Conversational Entity" botre in
+  Lwt_log.info "Right before let conns = H.find state.map topic L185" >>
   let conns = H.find state.map topic in
+  Lwt_log.info "Right before Lwt_list.iter_p L187" >>
   send_all conns echoMsg >>
   send_all conns reply
 
@@ -216,6 +219,7 @@ let handle_send frame conn =
     let topic = Protocol.get_header frame "destination" in
     if Str.string_match topic_re topic 0 then handle_send_topic frame conn
     else if Str.string_match private_re topic 0 then
+    lwt ()=Lwt_log.info "Did receive a request for a private message" in
     handle_send_private frame conn
     else failwith "Invalid send destination"
   with
@@ -241,6 +245,7 @@ let option_to_str s=
 (* val handle_subscribe : frame -> connection -> unit Lwt.t  *)
 let handle_subscribe frame conn =
   let topic = Protocol.get_header frame "destination" in
+  lwt () = Lwt_log.info (conn.username ^ " trying to subscribe to " ^ topic) in
   conn.topic<-Some topic;
   let conn' = {conn with topic = Some topic} in
   try_lwt
@@ -251,6 +256,7 @@ let handle_subscribe frame conn =
     let message = Protocol.make_message topic (current_time ()) "SERVER"
       (conn.username ^ " has joined the room.") in
     let stats = Protocol.make_stats "room_inhabitants" (room_subs topic) in
+    lwt () = Lwt_log.info ("Current connection topic " ^ (option_to_str conn.topic)) in
     send_all conns' message >>
     send_all conns' stats
   with Not_found ->
@@ -288,6 +294,8 @@ exception Fail_Unsub
 (* val handle_subscribe : frame -> connection -> unit Lwt.t  *)
 let handle_unsubscribe frame conn =
   let topic = Protocol.get_header frame "destination" in
+  Lwt_log.info ("topic being unsubbed from "^topic)>>
+  Lwt_log.info ("conn's topic is "^ (option_to_str conn.topic))>>
   try_lwt
     match conn.topic with
     | Some s when s = topic ->
@@ -327,19 +335,26 @@ exception Disconnected_EOF
 (* [handle_disconnect] does a graceful disconnect for a client from the server *)
 (* val handle_subscribe : frame -> connection -> unit  *)
 let handle_disconnect frame conn =
-  (* TODO: fix *)
-  Lwt_log.info ("Disconnecting user: " ^ conn.username) >>
-  Lwt_io.abort conn.output >>= fun _ ->
-     (* remove from  connections *)
-     state.connections <- CSET.remove conn state.connections;
-     H.remove state.user_map conn.username;
-     (* remove from subscriptions *)
-     let f k v =
-       let conns' = CSET.remove conn v in
-       H.replace state.map k conns' in
-     H.iter f state.map;
-     (* terminate the thread now with exn *)
-     fail Disconnected_EOF
+  state.connections <- CSET.remove conn state.connections;
+  H.remove state.user_map conn.username;
+  match conn.topic with
+  | Some topic ->
+    let conns = H.find state.map topic in
+    let conns' = CSET.remove conn conns in
+    let f k v =
+      let conns' = CSET.remove conn v in
+      H.replace state.map k conns' in
+    H.iter f state.map;
+    H.replace state.map topic conns';
+    (* return_unit *)
+    let left_message = Protocol.make_message topic "SERVER" (current_time ())
+      (conn.username ^ " has left the room.") in
+    send_all conns' left_message >>
+    let stat_frame = Protocol.make_stats "room_inhabitants" (room_subs topic) in
+    send_all conns' stat_frame >>
+    fail Disconnected_EOF
+  | None ->
+    fail Disconnected_EOF
 
 let get_player' p (p1,p2) =
   if p = p1 then p2
@@ -353,7 +368,7 @@ let send_turn_error frame conn =
 let handle_game frame conn =
   Lwt_log.info "in handle_game frame" >>
   try_lwt
-    let dest = Protocol.get_header frame "destination" in
+    (* let dest = Protocol.get_header frame "destination" in *)
     let chal = String.trim (Protocol.get_header frame "challenge") in
     if chal = "true" then
       (* replace any existing games *)
@@ -430,6 +445,7 @@ let handle_game frame conn =
     Protocol.send_frame fr conn.output
 
 let handle_frame frame conn =
+  Lwt_log.info "in handle frame" >>
   match frame.cmd with
   | SEND -> Lwt_log.info "Received a SEND frame" >>= fun _ ->
             handle_send frame conn
@@ -467,7 +483,12 @@ let close_connection conn =
       let conns = H.find state.map topic in
       let conns' = CSET.remove conn conns in
       H.replace state.map topic conns';
-      return_unit
+      (* return_unit *)
+      let left_message = Protocol.make_message topic "SERVER" (current_time ())
+        (conn.username ^ " has left the room.") in
+      send_all conns' left_message >>
+      let stat_frame = Protocol.make_stats "room_inhabitants" (room_subs topic) in
+      send_all conns' stat_frame
     | None ->
       return_unit
   end
@@ -534,6 +555,7 @@ let accept_connection (fd, sckaddr) =
       let open Unix in
       string_of_inet_addr inet_addr
     | _ -> "unknown" in
+  Lwt_log.info ("client connected of id" ^ client_id) >>
   let ic = Lwt_io.of_fd Lwt_io.Input fd in
   let oc = Lwt_io.of_fd Lwt_io.Output fd in
   establish_connection ic oc client_id
