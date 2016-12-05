@@ -35,6 +35,9 @@ open Protocol
 
 let (>>|) = (>|=)
 
+
+(* let flog = Lwt_main.run (Lwt_log.file "server.log" ()) *)
+
 (* Anonymous bind:
  * syntactic sugar from Lwt.syntax but Merlin doesn't recognize..so manually *)
 let (>>) (dt : unit Lwt.t) f = dt >>= (fun () -> f)
@@ -138,11 +141,8 @@ let clean_state () =
 
 (* make server listen on 127.0.0.1:9000 *)
 let listen_address = Unix.inet_addr_loopback (* or Sys.argv.(1) *)
-let port = 9000 (* or Sys.argv.(2) *)
 let backlog = 100 (* max num of connections? not working *)
 
-(* enable logging up to the INFO level *)
-let () = Lwt_log.add_rule "*" Lwt_log.Info
 
 (* [get_usernames conns_set] is a string list of the usernames of a connections
  * set*)
@@ -638,7 +638,7 @@ let accept_connection (fd, sckaddr) =
  * [create_socket () ] creates a socket of type stream in the internet
  * domain with the default protocol and returns it
 *)
-let create_socket () =
+let create_socket port () =
   let open Lwt_unix in
   let sock = socket PF_INET SOCK_STREAM 0 in
   bind sock @@ ADDR_INET(listen_address, port);
@@ -650,19 +650,22 @@ let create_socket () =
  * loop. At each iteration of the loop, it waits for a connection request with
  * accept and treats it with [accept_connection].
 *)
-let create_server () =
+let create_server port () =
   print_endline "Creating socket\n";
-  let server_socket = create_socket () in
+  let server_socket = create_socket port () in
   let rec serve () =
     let client = Lwt_unix.accept server_socket in
     client >>= accept_connection >>= serve
   in serve
 
 (* initialize the server *)
-let run_server () =
+let run_server port debug =
+  (* enable logging up to the INFO level (default = true) *)
+  let () = if debug then Lwt_log.add_rule "*" Lwt_log.Info
+           else Lwt_log.add_rule "*" Lwt_log.Error in
   print_endline "Running server\n";
   clean_state ();
-  let serve = create_server () in
+  let serve = create_server port () in
   Lwt_main.run @@ serve ()
 
 (* [flush_map_message map_message] flushes chat history stored in map_message to
