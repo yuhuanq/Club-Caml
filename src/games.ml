@@ -13,6 +13,8 @@ module type Game = sig
 
   type move_spec
 
+  exception Invalid_move
+
   val is_over : t -> bool
 
   val instructions : string
@@ -33,6 +35,15 @@ module Tictactoe : Game = struct
     grid : bool option array array;
   }
 
+  (* move_spec is a format to specify a move or turn to be made.
+   * E.g. choosing where to place an x in tic-tac-toe, or making a move in chess
+   *)
+  type move_spec =
+  | O of int * int
+  | X of int * int
+
+  exception Invalid_move
+
   let is_over t = t.ended
 
   let instructions =
@@ -43,13 +54,6 @@ module Tictactoe : Game = struct
       i,j -> places an X or O at cell i,j
       i.e.
       2,3 or 1,1\n"
-
-  (* move_spec is a format to specify a move or turn to be made.
-   * E.g. choosing where to place an x in tic-tac-toe, or making a move in chess
-   *)
-  type move_spec =
-  | O of int * int
-  | X of int * int
 
   (* [new_game] returns an initialized game state that is the starting point for
    * whichever game we’re playing (for now, tic tac toe) *)
@@ -95,7 +99,7 @@ module Tictactoe : Game = struct
         state.turns <- state.turns + 1;
         ended_or_not state)
       else
-        ()
+        raise Invalid_move
     | X (x, y) ->
       if state.grid.(x).(y) = None
         then
@@ -103,7 +107,7 @@ module Tictactoe : Game = struct
         state.turns <- state.turns + 1;
         ended_or_not state)
       else
-        ()
+        raise Invalid_move
 
   (* Methods for printing game state to terminal screen *)
 

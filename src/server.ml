@@ -460,6 +460,13 @@ let handle_game frame conn =
   | Not_found ->
     let fr = Protocol.make_error "game" "There is no active game for you." in
     Protocol.send_frame fr conn.output
+  | Games.Tictactoe.Invalid_move ->
+    let fr = Protocol.make_error "game" "Invalid move." in
+    Protocol.send_frame fr conn.output
+  | Invalid_argument ex ->
+    Lwt_log.info ex >>
+    let fr = Protocol.make_error "game" "Invalid move." in
+    Protocol.send_frame fr conn.output
   (*
    * try_lwt
    *   (* just updating one copy of game_staet is OK, changes will be refl in both
