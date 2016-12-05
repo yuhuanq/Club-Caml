@@ -63,30 +63,48 @@ module Tictactoe : Game = struct
     grid = Array.make_matrix 3 3 None
   }
 
-  (* [ended_or_not state] updates state based on whether game has ended or not. *)
+  (* [ended_or_not_help] is a helper for ended_or_not. It updates state
+   * based on whether game has ended or not. But it doesn't take ties into
+   * consideration. *)
+  let ended_or_not_help state x y sz =
+    if x - 1 >= 0 && x + 1 <= sz - 1
+      && state.grid.(x - 1).(y) = state.grid.(x).(y)
+      && state.grid.(x).(y) = state.grid.(x + 1).(y)
+      && state.grid.(x).(y) != None
+      then state.ended <- true
+    else if y - 1 >= 0 && y + 1 <= sz - 1
+      && state.grid.(x).(y - 1) = state.grid.(x).(y)
+      && state.grid.(x).(y) = state.grid.(x).(y + 1)
+      && state.grid.(x).(y) != None
+      then state.ended <- true
+    else if x - 1 >= 0 && x + 1 <= sz - 1
+      && y - 1 >= 0 && y + 1 <= sz - 1
+      &&
+        ((state.grid.(x - 1).(y - 1) = state.grid.(x + 1).(y + 1)
+        && state.grid.(x - 1).(y - 1) = state.grid.(x).(y)
+        && state.grid.(x).(y) != None) ||
+        (state.grid.(x - 1).(y + 1) = state.grid.(x + 1).(y - 1)
+        && state.grid.(x + 1).(y - 1) = state.grid.(x).(y)
+        && state.grid.(x).(y) != None))
+      then state.ended <- true
+    else
+      ()
+
+  (* [ended_or_not state] updates state based on whether game has ended or not.
+   *)
   let ended_or_not state =
     let tie = ref true in
     let sz = Array.length state.grid in
     for x = 0 to sz - 1 do
       for y = 0 to sz - 1 do
         if state.grid.(x).(y) != None
-          then tie := false
-        else if x-1 >= 0 && x + 1 <= sz - 1
-          && state.grid.(x-1).(y) = state.grid.(x).(y)
-          && state.grid.(x).(y) = state.grid.(x+1).(y)
-          && state.grid.(x).(y) != None
-          then state.ended <- true
-        else if y - 1 >= 0 && y + 1 <= sz - 1
-          && state.grid.(x).(y-1) = state.grid.(x).(y)
-          && state.grid.(x).(y) = state.grid.(x).(y+1)
-          && state.grid.(x).(y) != None
-          then state.ended <- true
+          then (tie := false; ended_or_not_help state x y sz)
         else
-          ()
+          ended_or_not_help state x y sz
       done;
     done;
     if !tie = true
-      then state.ended <- true 
+      then state.ended <- true
 
   (* [update state move] takes in the current game state and the move that is
    * to be made, and updates game state. Returns unit *)
