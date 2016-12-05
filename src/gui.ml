@@ -120,7 +120,7 @@ let main () = Lwt_main.run(
   let usr_view = GTree.view ~model:user_list_store
                             ~packing:scrolled_usr#add () in
 
-  let usr_view_column = GTree.view_column  ~title:"Users Online"
+  let usr_view_column = GTree.view_column  ~title:"Users in Room"
             ~renderer:(GTree.cell_renderer_text [`XALIGN 0.5],
                        ["text",column]) ()
   in
