@@ -1,27 +1,65 @@
 (*********************************************************
  gui_helper.ml has useful functions to manipulate the gui
+                Go to the bottom to see them!
  *********************************************************)
+type msg = [`ERROR | `SERVER | `PM | `STATUS | `NORMAL]
 
 (*****These values are used for constructing the GUI*****)
+let color_map = Gdk.Color.get_system_colormap ()
+let red_gdk = Gdk.Color.alloc ~colormap:color_map (`RGB (204,0,0))
+let blue_gdk = Gdk.Color.alloc ~colormap:color_map (`RGB (30,144,255))
+let purple_gdk = Gdk.Color.alloc ~colormap:color_map (`RGB (174,89,182))
+let green_gdk = Gdk.Color.alloc ~colormap:color_map (`RGB (0,170,85))
 
 (*[game_tag] is monospace, for better formatting of games*)
 let game_tag =
-  let temp = GText.tag ~name:"game_tag"() in
+  let temp = GText.tag ~name:"game_tag" () in
   temp#set_property (`FONT ("monospace"));
   temp#set_property (`WEIGHT (`BOLD));
   temp
 
+let error_tag =
+  let temp = GText.tag ~name:"error_tag" () in
+  temp#set_property (`WEIGHT (`BOLD));
+  temp#set_property (`FOREGROUND_GDK (red_gdk));
+  temp
+
+let server_tag =
+  let temp = GText.tag ~name:"server_tag" () in
+  temp#set_property (`WEIGHT (`BOLD));
+  temp#set_property (`FOREGROUND_GDK (blue_gdk));
+  temp
+
+let pm_tag =
+  let temp = GText.tag ~name:"server_tag" () in
+  temp#set_property (`WEIGHT (`BOLD));
+  temp#set_property (`FOREGROUND_GDK (purple_gdk));
+  temp
+
+let status_tag =
+  let temp = GText.tag ~name:"server_tag" () in
+  temp#set_property (`WEIGHT (`BOLD));
+  temp#set_property (`FOREGROUND_GDK (green_gdk));
+  temp
+
 let id_tag =
-  let temp = GText.tag ~name:"msg_id_tag"() in
+  let temp = GText.tag ~name:"msg_id_tag" () in
   temp#set_property (`WEIGHT (`BOLD));
   temp
 
 let casted_id_tag = id_tag#as_tag
 let casted_game_tag = game_tag#as_tag
+let casted_error_tag = error_tag#as_tag
+let casted_server_tag = server_tag#as_tag
+let casted_pm_tag = pm_tag#as_tag
+let casted_status_tag = status_tag#as_tag
+
 
 let tag_table =
   let init_tag_table = GText.tag_table () in
   init_tag_table#add casted_id_tag;init_tag_table#add casted_game_tag;
+  init_tag_table#add casted_error_tag;init_tag_table#add casted_server_tag;
+  init_tag_table#add casted_pm_tag;init_tag_table#add casted_status_tag;
   init_tag_table
 
 let caml_pixbuf = GdkPixbuf.from_file_at_size "images/ocaml.png" 125 125
@@ -54,35 +92,75 @@ let room_label = GMisc.label
 (*----------------------------------------------------------------------------*)
 (* [msg_insert identifier msg] inserts a message into the GUI.
  * The identifier should be of form "[9:52 PM] <Eric Wang>"
- * Takes in an optional boolean is_game that is used when
+ * Takes in an optional boolean that is used when
  * printing games (use monospace, bolded font for [msg]),
- * with default value false.*)
-let msg_insert ?is_game:(game_bool=false) (identifier:string) (msg:string)  =
-  if msg = "🐪" then   (*special caml case, get it? hahaha*)
-    begin
-      chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[id_tag]
-                        ("\n"^identifier^"\n");
-      chat_buffer#insert_pixbuf chat_buffer#end_iter caml_pixbuf
-    end
-  else if msg = "😶" then
-    begin
-      chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[id_tag]
-                        ("\n"^identifier^"\n");
-      chat_buffer#insert_pixbuf chat_buffer#end_iter clarkson_pixbuf
-    end
-  else if game_bool then
-    begin
-    chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[id_tag]
-                      ("\n"^identifier^" ");
-    chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[game_tag]
-                       msg;
-    end
-  else
-    begin
-    chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[id_tag]
-                      ("\n"^identifier^" ");
-    chat_buffer#insert ~iter:chat_buffer#end_iter msg;
-    end
+ * with default value false. Takes in an optional msg_type
+ * that prints with a different color.*)
+let msg_insert ?msg_type:(msg_type=`NORMAL) ?is_game:(game_bool=false)
+               (identifier:string) (msg:string)  =
+  match msg_type with
+  |`ERROR ->  begin
+                chat_buffer#insert ~iter:chat_buffer#end_iter
+                                   ~tags:[id_tag;error_tag]
+                                   ("\n"^identifier^" ");
+                chat_buffer#insert ~iter:chat_buffer#end_iter
+                                   ~tags:[error_tag]
+                                    msg;
+              end
+
+  |`SERVER -> begin
+                chat_buffer#insert ~iter:chat_buffer#end_iter
+                                   ~tags:[id_tag;server_tag]
+                                   ("\n"^identifier^" ");
+                chat_buffer#insert ~iter:chat_buffer#end_iter
+                                   ~tags:[server_tag]
+                                    msg;
+              end
+
+  |`PM -> begin
+                chat_buffer#insert ~iter:chat_buffer#end_iter
+                                   ~tags:[id_tag;pm_tag]
+                                   ("\n"^identifier^" ");
+                chat_buffer#insert ~iter:chat_buffer#end_iter
+                                   ~tags:[pm_tag]
+                                    msg;
+          end
+
+  |`STATUS -> begin
+                chat_buffer#insert ~iter:chat_buffer#end_iter
+                                   ~tags:[id_tag;status_tag]
+                                   ("\n"^identifier^" ");
+                chat_buffer#insert ~iter:chat_buffer#end_iter
+                                   ~tags:[status_tag]
+                                    msg;
+              end
+
+  |`NORMAL ->
+            if msg = "🐪" then   (*special caml case, get it? hahaha*)
+              begin
+                chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[id_tag]
+                                  ("\n"^identifier^"\n");
+                chat_buffer#insert_pixbuf chat_buffer#end_iter caml_pixbuf
+              end
+            else if msg = "😶" then
+              begin
+                chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[id_tag]
+                                  ("\n"^identifier^"\n");
+                chat_buffer#insert_pixbuf chat_buffer#end_iter clarkson_pixbuf
+              end
+            else if game_bool then
+              begin
+              chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[id_tag]
+                                ("\n"^identifier^" ");
+              chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[game_tag]
+                                 msg;
+              end
+            else
+              begin
+              chat_buffer#insert ~iter:chat_buffer#end_iter ~tags:[id_tag]
+                                ("\n"^identifier^" ");
+              chat_buffer#insert ~iter:chat_buffer#end_iter msg;
+              end
 
 
 (*[clear_chat ()] clears the GUI chat window*)
