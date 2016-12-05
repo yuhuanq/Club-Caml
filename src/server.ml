@@ -256,7 +256,8 @@ let handle_subscribe frame conn =
     let message = Protocol.make_message topic (current_time ()) "SERVER"
       (conn.username ^ " has joined the room.") in
     let stats = Protocol.make_stats "room_inhabitants" (room_subs topic) in
-    lwt () = Lwt_log.info ("Current connection topic " ^ (option_to_str conn.topic)) in
+    lwt () = Lwt_log.info ("Current connection topic " ^ (option_to_str
+    conn.topic)) in
     send_all conns' message >>
     send_all conns' stats
   with Not_found ->
@@ -309,7 +310,8 @@ let handle_unsubscribe frame conn =
         (conn.username ^ " has left the room.") in
       send_all conns' left_message >>
       (* TODO: *)
-      let stat_frame = Protocol.make_stats "room_inhabitants" (room_subs topic) in
+      let stat_frame = Protocol.make_stats "room_inhabitants" (room_subs topic)
+      in
       let stat_frame_num = Protocol.make_stats "num_in_rooms" (room_nums ()) in
       Protocol.send_frame stat_frame_num conn.output >>
       (* update eveyrone elses userlist *)
@@ -380,7 +382,8 @@ let handle_game frame conn =
       H.add state.games conn.username newg;
       H.add state.games opp newg;
       let str_rep = Games.Tictactoe.to_string gstate in
-      let reply = Protocol.make_game_message str_rep newg.players Games.Tictactoe.instructions in
+      let reply = Protocol.make_game_message str_rep newg.players
+      Games.Tictactoe.instructions in
       let conns = H.find state.map dest in
       send_all conns reply
     else if chal="false" then
@@ -428,7 +431,8 @@ let handle_game frame conn =
             end
           end
       else
-        let fr = Protocol.make_error "game" "Invalid header in GAME frame by client." in
+        let fr = Protocol.make_error "game" "Invalid header in GAME frame by
+        client." in
         Protocol.send_frame fr conn.output
   with
   (* if not found that means, user tried to #play <cmd-str> without an active *)
@@ -487,7 +491,8 @@ let close_connection conn =
       let left_message = Protocol.make_message topic "SERVER" (current_time ())
         (conn.username ^ " has left the room.") in
       send_all conns' left_message >>
-      let stat_frame = Protocol.make_stats "room_inhabitants" (room_subs topic) in
+      let stat_frame = Protocol.make_stats "room_inhabitants" (room_subs topic)
+      in
       send_all conns' stat_frame
     | None ->
       return_unit
@@ -522,7 +527,8 @@ let establish_connection ic oc client_id =
           else
             (* successful, passed above checks *)
             Lwt_log.info ("user " ^ username ^ " has logged in.") >>= fun _ ->
-            let conn = {input = ic; topic = None; output = oc; username = username} in
+            let conn = {input = ic; topic = None; output = oc; username =
+              username} in
             state.connections <- CSET.add conn state.connections;
             H.add state.user_map conn.username conn;
             try_lwt

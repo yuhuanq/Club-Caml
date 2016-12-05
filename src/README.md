@@ -49,4 +49,4 @@ Join the chatbot room to talk with
 a chat bot! This chatbot uses the
 *Pandorabots API* to select its responses.
 ####Easter eggs
-Try sending "🐪" or "😶" for something interesting! ;)
+Try sending "😶" for something interesting! ;)

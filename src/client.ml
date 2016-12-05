@@ -87,7 +87,8 @@ let print_to_gui ?msg_type:(msg_type=`NORMAL) ?is_game:(game_bool=false)
 
 (* [handle_leave] sends out an unsubscribe frame when user wants to leave room*)
 let handle_leave cur_topic=
-  lwt ()=Lwt_log.info ("Current room is "^(option_to_str (!cur_connection).topic)) in
+  lwt ()=Lwt_log.info ("Current room is "^(option_to_str
+  (!cur_connection).topic)) in
   let unsubframe=make_unsubscribe cur_topic in
   let ()=Gui_helper.set_usr_list [] in
   let ()=Gui_helper.set_room_label "" in
@@ -207,7 +208,8 @@ let rec_message fr =
   else if (String.equal (String.sub dest 0 9) "/private/")
     then
     let recip = Str.string_after dest 9 in
-    let sender' = if !(cur_connection).username = sender then ("To " ^ recip) else sender in
+    let sender' = if !(cur_connection).username = sender then ("To " ^ recip)
+       else sender in
     let id_str = " < " ^ mid ^ " > " ^ sender' ^ " : " in
     let msg = fr.body in
     print_to_gui ~msg_type:`PM  id_str msg
@@ -221,8 +223,8 @@ cleint gets a GAME frame*)
 let rec_gmessage fr =
   (* ALL PRINTS HERE SHOULD BE game colors*)
   (* instructions repld, see #help *)
-  let players = (Protocol.get_header fr "player1") ^ " vs " ^ (Protocol.get_header fr
-  "player2")  in
+  let players = (Protocol.get_header fr "player1") ^ " vs " ^
+  (Protocol.get_header fr "player2")  in
   let id_str = " < " ^ (current_time ()) ^ " > " ^ players ^ " :\n" in
   let msg = fr.body in
   Lwt_io.print (id_str^msg) >>
