@@ -4,8 +4,6 @@ open Protocol
 (* Address that server listens to *)
 val listen_address : Unix.inet_addr
 
-val port : int
-
 type connection = {
   input      : Lwt_io.input_channel;
   output     : Lwt_io.output_channel;
@@ -73,15 +71,15 @@ val accept_connection : Lwt_unix.file_descr * Lwt_unix.sockaddr -> unit Lwt.t
  * [create_socket () ] creates a socket of type stream in the internet
  * domain with the default protocol and returns it
  *)
-val create_socket : unit -> Lwt_unix.file_descr
+val create_socket : int -> unit -> Lwt_unix.file_descr
 
 (*
  * [create_server] creates a socket with [create_socket] and enters an infinite
  * loop. At each iteration of the loop, it waits for a connection request with
  * accept and treats it with [accept_connection].
  *)
-val create_server : unit -> unit -> 'a Lwt.t
+val create_server : int -> unit -> unit -> 'a Lwt.t
 
 
 (* initialize the server *)
-val run_server : unit -> 'a
+val run_server : int -> bool -> 'a

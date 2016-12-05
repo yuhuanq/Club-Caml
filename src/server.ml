@@ -35,6 +35,9 @@ open Protocol
 
 let (>>|) = (>|=)
 
+
+(* let flog = Lwt_main.run (Lwt_log.file "server.log" ()) *)
+
 (* Anonymous bind:
  * syntactic sugar from Lwt.syntax but Merlin doesn't recognize..so manually *)
 let (>>) (dt : unit Lwt.t) f = dt >>= (fun () -> f)
@@ -138,11 +141,8 @@ let clean_state () =
 
 (* make server listen on 127.0.0.1:9000 *)
 let listen_address = Unix.inet_addr_loopback (* or Sys.argv.(1) *)
-let port = 9000 (* or Sys.argv.(2) *)
 let backlog = 100 (* max num of connections? not working *)
 
-(* enable logging up to the INFO level *)
-let () = Lwt_log.add_rule "*" Lwt_log.Info
 
 (* [get_usernames conns_set] is a string list of the usernames of a connections
  * set*)
@@ -165,7 +165,21 @@ let gather_info () =
   H.fold (fun k v acc -> (k,get_usernames_str v)::acc)
   state.map []
 
-let get_room_stats () =
+let room_subs topic =
+  let conns = H.find state.map topic in
+  let subs = CSET.fold (fun elt acc ->
+    if String.length acc = 0 then elt.username
+    else elt.username ^ "," ^ acc) conns "" in
+  [topic,subs]
+  (*
+   * with
+   *   Not_found ->
+   *     let err = Protocol.make_error "Invalid room" "No stats for this room." in
+   *)
+
+
+(* [get_room_stats () ] is an assoc list of active topics, num subscribers *)
+let room_nums () =
   H.fold (fun k v acc -> (k,string_of_int (List.length (CSET.elements
   v)))::acc) state.map []
 
@@ -182,12 +196,16 @@ let handle_chatbot frame conn =
   (* Chatbot.init (); *)
   let topic = Protocol.get_header frame "destination"  in
   let botre = Chatbot.ask frame.body in
+  let echoMsg = Protocol.make_message topic (string_of_float (Unix.gettimeofday
+  ())) conn.username frame.body in
   Lwt_log.info ("Bot response is: " ^ botre) >>
   let reply = Protocol.make_message topic
-  (string_of_float (Unix.gettimeofday ())) conn.username botre in
+  (string_of_float (Unix.gettimeofday ())) "Artificial Conversational Entity" botre in
   Lwt_log.info "Right before let conns = H.find state.map topic L185" >>
   let conns = H.find state.map topic in
   Lwt_log.info "Right before Lwt_list.iter_p L187" >>
+  Lwt_list.iter_p (fun conn -> Protocol.send_frame echoMsg conn.output)
+  (CSET.elements conns) >>
   Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
   (CSET.elements conns)
 
@@ -247,6 +265,10 @@ let option_to_str s=
   |Some x-> x
   |None -> "None"
 
+(* [send_all topic frame] sends the frame to all connections subscribed to [topic] *)
+let send_all topic frame =
+  failwith "unimplemented"
+
 (*
  * [handle_subscribe] handles a SUBSCRIBE frame. a SUBSCRIBE command is used to
  * register to a listen to a given destination
@@ -267,8 +289,11 @@ let handle_subscribe frame conn =
     Lwt_log.info (conn.username ^ " subscribed to " ^ topic) >>
     let message = Protocol.make_message topic (string_of_float
     (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
-    lwt ()=Lwt_log.info ("Current connection topic "^(option_to_str conn.topic)) in
+    let stats = Protocol.make_stats "room_inhabitants" (room_subs topic) in
+    lwt () = Lwt_log.info ("Current connection topic " ^ (option_to_str conn.topic)) in
     Lwt_list.iter_p (fun conn -> Protocol.send_frame message conn.output)
+    (CSET.elements conns') >>
+    Lwt_list.iter_p (fun conn -> Protocol.send_frame stats conn.output)
     (CSET.elements conns')
   with Not_found ->
     (* if nonexisting topic, create  it and sub conn to it  *)
@@ -288,7 +313,10 @@ let handle_subscribe frame conn =
                        subscribed to " ^ topic) >>
         let message = Protocol.make_message topic (string_of_float
         (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
+        let stats = Protocol.make_stats "room_inhabitants" (room_subs topic) in
         Lwt_list.iter_p (fun conn -> Protocol.send_frame message conn.output)
+        (CSET.elements conns) >>
+        Lwt_list.iter_p (fun conn -> Protocol.send_frame stats conn.output)
         (CSET.elements conns)
       end
 
@@ -325,10 +353,11 @@ let handle_unsubscribe frame conn =
        *)
       Lwt_list.iter_p (fun conn -> Protocol.send_frame left_message conn.output)
       (CSET.elements conns') >>
-      (* Send a INFO frame with info on the curr. active rooms so that client can *)
-      (* choose reconnect to a different room *)
-      let stat_frame = Protocol.make_stats (get_room_stats ()) in
-      Protocol.send_frame stat_frame conn.output >>
+      (* TODO: *)
+      let stat_frame = Protocol.make_stats "room_inhabitants" (room_subs topic) in
+      (* update eveyrones userlist *)
+      Lwt_list.iter_p (fun conn -> Protocol.send_frame stat_frame conn.output)
+      (CSET.elements conns') >>
       if conns' = CSET.empty then
         begin
           H.replace state.map_msg topic MSET.empty;
@@ -455,74 +484,6 @@ let handle_game frame conn =
     Lwt_log.info ex >>
     let fr = Protocol.make_error "game" "Invalid move." in
     Protocol.send_frame fr conn.output
-  (*
-   * try_lwt
-   *   (* just updating one copy of game_staet is OK, changes will be refl in both
-   *    * locs of the val *)
-   *   let dest = Protocol.get_header frame "destination" in
-   *   let st = H.find state.games conn.username in
-   *   if st.turn <> conn.username then
-   *     Lwt_log.info ("st.turn is:" ^ st.turn ^ " BUT conn.username is:" ^
-   *     conn.username) >>
-   *     send_turn_error frame conn
-   *   else
-   *     if String.trim frame.body = "resign" then
-   *       let opp = get_player' conn.username st.players in
-   *       begin
-   *         H.remove state.games conn.username;
-   *         H.remove state.games opp;
-   *         let str_rep = Games.Tictactoe.to_string st.gstate in
-   *         let str_rep' = opp ^ " wins!\n" ^ str_rep in
-   *         let reply = Protocol.make_game_message str_rep' st.players "" in
-   *         let conns = H.find state.map dest in
-   *         Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
-   *         (CSET.elements conns)
-   *       end
-   *     else begin
-   *       let gstate' = Games.Tictactoe.play st.gstate frame.body in
-   *       let opp = get_player' conn.username st.players in
-   *       if Games.Tictactoe.is_over gstate' then
-   *         begin
-   *           H.remove state.games conn.username;
-   *           H.remove state.games opp;
-   *           let str_rep = Games.Tictactoe.to_string gstate' in
-   *           let str_rep' = "Game over.\n" ^ str_rep in
-   *           let reply = Protocol.make_game_message str_rep' st.players "" in
-   *           let conns = H.find state.map dest in
-   *           Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
-   *           (CSET.elements conns)
-   *         end
-   *       else
-   *         begin
-   *           st.gstate <- gstate';
-   *           st.turn <- opp;
-   *           let str_rep = Games.Tictactoe.to_string gstate' in
-   *           let str_rep' = (opp ^ " to move.\n") ^ str_rep in
-   *           let reply = Protocol.make_game_message str_rep' st.players "" in
-   *           let conns = H.find state.map dest in
-   *           Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
-   *           (CSET.elements conns)
-   *         end
-   *       end
-   * with
-   *   | Not_found ->
-   *     (* Means its the first initial prop. create it. *)
-   *     let gstate = Games.Tictactoe.new_game () in
-   *     let dest = Protocol.get_header frame "destination" in
-   *     let opp = Protocol.get_header frame "opponent" in
-   *     let newg = { gstate = gstate; players = (conn.username,opp); turn =
-   *       conn.username} in
-   *     H.add state.games conn.username newg;
-   *     H.add state.games opp newg;
-   *     let str_rep = Games.Tictactoe.to_string gstate in
-   *     let reply = Protocol.make_game_message str_rep newg.players Games.Tictactoe.instructions in
-   *     let conns = H.find state.map dest in
-   *     Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
-   *     (CSET.elements conns)
-   *   | Invalid_argument _ ->
-   *     let fr = Protocol.make_error "game" "Invalid game command. Out of bounds perhaps." in
-   *     Protocol.send_frame fr conn.output
-   *)
 
 let handle_frame frame conn =
   Lwt_log.info "in handle frame" >>
@@ -582,9 +543,10 @@ let establish_connection ic oc client_id =
         (* let reply = make_connected (string_of_int (newi ()) ) in *)
         let reply = {
           cmd = Protocol.CONNECTED;
-          headers = ("session",string_of_int (newi ()))::gather_info ();
+          headers = ["session",string_of_int (newi ())];
           body = "";
         } in
+        let init_stats = Protocol.make_stats "num_in_rooms" (room_nums ()) in
         let username = List.assoc "login" fr.headers in
         if String.length username > 9 || String.length username < 1 then
           let reply = make_error "Invalid Nickname"
@@ -595,18 +557,19 @@ let establish_connection ic oc client_id =
             let reply = make_error "" "Username already taken" in
             Protocol.send_frame reply oc >> Lwt_io.abort ic
           else
+            (* successful, passed above checks *)
             Lwt_log.info ("user " ^ username ^ " has logged in.") >>= fun _ ->
             let conn = {input = ic; topic = None; output = oc; username = username} in
             state.connections <- CSET.add conn state.connections;
             H.add state.user_map conn.username conn;
             try_lwt
-              Protocol.send_frame reply oc >>=
-                fun () ->
-                  Lwt_log.info ("New connection from " ^
-                  client_id) >>= fun _ ->
-                  Lwt.on_failure (handle_connection conn ())
-                  (fun e -> Lwt_log.ign_error (Printexc.to_string e));
-                  return_unit
+              Protocol.send_frame reply oc >>
+              Protocol.send_frame init_stats oc >>= fun () ->
+                Lwt_log.info ("New connection from " ^
+                client_id) >>= fun _ ->
+                Lwt.on_failure (handle_connection conn ())
+                (fun e -> Lwt_log.ign_error (Printexc.to_string e));
+                return_unit
             with
             | _ ->
               close_connection conn
@@ -638,7 +601,7 @@ let accept_connection (fd, sckaddr) =
  * [create_socket () ] creates a socket of type stream in the internet
  * domain with the default protocol and returns it
 *)
-let create_socket () =
+let create_socket port () =
   let open Lwt_unix in
   let sock = socket PF_INET SOCK_STREAM 0 in
   bind sock @@ ADDR_INET(listen_address, port);
@@ -650,19 +613,22 @@ let create_socket () =
  * loop. At each iteration of the loop, it waits for a connection request with
  * accept and treats it with [accept_connection].
 *)
-let create_server () =
+let create_server port () =
   print_endline "Creating socket\n";
-  let server_socket = create_socket () in
+  let server_socket = create_socket port () in
   let rec serve () =
     let client = Lwt_unix.accept server_socket in
     client >>= accept_connection >>= serve
   in serve
 
 (* initialize the server *)
-let run_server () =
+let run_server port debug =
+  (* enable logging up to the INFO level (default = true) *)
+  let () = if debug then Lwt_log.add_rule "*" Lwt_log.Info
+           else Lwt_log.add_rule "*" Lwt_log.Error in
   print_endline "Running server\n";
   clean_state ();
-  let serve = create_server () in
+  let serve = create_server port () in
   Lwt_main.run @@ serve ()
 
 (* [flush_map_message map_message] flushes chat history stored in map_message to
