@@ -85,9 +85,20 @@ let option_to_str s=
   |Some x -> x
   |None -> ""
 
+let shorter_room_name s=
+  let slist = Str.split (Str.regexp "[/]+") s in
+  List.nth slist 1
+
+let print_to_gui display_str=
+  Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |>
+  Notty_lwt.output_image_endline >>= fun () ->
+  return (Gui_helper.msg_insert "" display_str)
+
 let handle_leave cur_topic=
   lwt ()=Lwt_log.info ("Current room is "^(option_to_str (!cur_connection).topic)) in
   let unsubframe=make_unsubscribe cur_topic in
+  let ()=Gui_helper.set_usr_list [] in
+  let ()=Gui_helper.set_room_label "" in
   let ()=remove_topic () in
   Protocol.send_frame unsubframe (!cur_connection).output
 
@@ -99,6 +110,7 @@ let handle_quit () =
 let handle_change nroom cur_topic=
   let unsubframe = make_unsubscribe cur_topic in
   let subframe = make_subscribe nroom in
+  let ()=Gui_helper.set_room_label (shorter_room_name nroom) in
   (!cur_connection).topic <- Some nroom;
   send_frame unsubframe (!cur_connection).output >>
   send_frame subframe (!cur_connection).output
@@ -107,6 +119,7 @@ let handle_join nroom=
   lwt ()=Lwt_log.info ("Attempting to join room "^nroom^"\n") in
   let subframe = make_subscribe nroom in
   let ()=update_topic nroom in
+  let ()=Gui_helper.set_room_label (shorter_room_name nroom) in
   send_frame subframe (!cur_connection).output
 
 let handle_send msg cur_topic : unit Lwt.t =
@@ -123,11 +136,6 @@ let handle_play ?(opp=None) challenge cmd cur_topic =
   | Some o ->
       let fr = Protocol.make_game cur_topic challenge o cmd in
       Protocol.send_frame fr (!cur_connection).output
-
-let print_to_gui display_str=
-  Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |>
-  Notty_lwt.output_image_endline >>= fun () ->
-  return (Gui_helper.msg_insert "" display_str)
 
 (* print stats, print error, message to private*)
 let rec_stats fr =
