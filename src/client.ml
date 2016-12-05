@@ -114,29 +114,37 @@ let handle_game_client_side game_msg cur_topic =
   let gameframe = Protocol.make_game cur_topic game_msg sender in
   send_frame gameframe (!cur_connection).output
 
-(* TODO *)
+let print_to_gui display_str=
+  Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |>
+  Notty_lwt.output_image_endline >>= fun () ->
+  return (Gui_helper.msg_insert "" display_str)
+
+(* print stats, print error, message to private*)
 let rec_stats fr =
   (* headers of stats frame is an assoc list of Topics x num subscribers *)
-  failwith "unimplemented"
+  let hdrs=fr.headers in
+  let rec helper hdrs=
+    match hdrs with
+    |[]-> return ()
+    |(top,numsub)::t->
+      let display_str = " < " ^ top ^ " > room has " ^ numsub ^ " users " ^ fr.body in
+      lwt()= print_to_gui display_str
+      in
+      helper t
+  in helper hdrs
+
 
 let rec_error fr =
-  (* TODO *)
-  (* let short = Protocol.get_header fr "message" in  *)
-  failwith "unimplemented"
+  let short = Protocol.get_header fr "message" in
+  print_to_gui ("ERROR: "^short)
 
 let rec_message fr =
   let sender = Protocol.get_header fr "sender" in
   let mid = Protocol.get_header fr "message-id" in
   let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
-  (* ANSITerminal.print_string [ANSITerminal.cyan] display_str; *)
-  (* Lwt_io.print display_str *)
-  Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |>
-  Notty_lwt.output_image_endline >>= fun () ->
-  return (Gui_helper.msg_insert "" display_str)
-  (* return_unit *)
+  print_to_gui display_str
 
 let rec_game_message fr =
-  (* instructions may = "" *)
   let instructions = Protocol.get_header  fr "instructions" in
   Lwt_log.info instructions >> Lwt_log.info fr.body
 
@@ -149,11 +157,10 @@ let rec handle_incoming_frames ()=
   | MESSAGE-> Lwt_log.info "received MESSAGE frame" >>
     Lwt_log.info ("received message body: " ^ fr.body)
     >> rec_message fr
-    (* >>= fun () -> begin rec_message fr; return_unit end *)
-    (* let () = rec_message fr in *)
-    (* return_unit *)
-  | ERROR-> Lwt_log.info "received ERROR frame"
-  | STATS -> Lwt_log.info "received STATS frame"
+  | ERROR-> Lwt_log.info "received ERROR frame" >>
+            rec_error fr
+  | STATS -> Lwt_log.info "received STATS frame" >>
+             rec_stats fr
   | GAME_RESP -> Lwt_log.info "received GAME_RESP frame."
   | _ -> Lwt_log.info ("received a frame of type not expected")
 
@@ -178,8 +185,7 @@ let rec repl () =
     match wdlst with
     | [dir] ->
         if dir = "#quit" then handle_quit ()
-        (* TODO *)
-        else if dir = "#leave" then failwith "unimplemented"
+        else if dir = "#leave" then handle_leave cur_topic
         else Lwt_io.print "Invalid directive" >> repl ()
     | [dir;topic] ->
         (* TODO: games *)
@@ -201,17 +207,13 @@ let rec repl () =
 
 
 let rec process raw_input =
-  (* TODO: for gui integration *)
-  (* lwt () = Lwt_log.info "in repl" in *)
-  (* lwt raw_input = Lwt_io.read_line Lwt_io.stdin in *)
   let cur_topic = option_to_str ((!cur_connection).topic) in
   if Str.string_match dir_re raw_input 0 then
     let wdlst = Str.split (Str.regexp "[ \t]+") raw_input in
     match wdlst with
     | [dir] ->
         if dir = "#quit" then handle_quit ()
-        (* TODO *)
-        else if dir = "#leave" then failwith "unimplemented"
+        else if dir = "#leave" then handle_leave cur_topic
         else Lwt_io.print "Invalid directive"
     | [dir;topic] ->
         (* TODO: games *)
@@ -244,7 +246,6 @@ let main ipstring =
     let sock = Lwt_unix.socket Lwt_unix.PF_INET Lwt_unix.SOCK_STREAM 0 in
     (*Do not need to bind, it is implicitly done - google this*)
     lwt () = Lwt_unix.connect sock addr in
-    (* >>= fun () -> *)
     let oc = Lwt_io.of_fd Lwt_io.Output sock in
     let ic = Lwt_io.of_fd Lwt_io.Input sock in
     print_endline "right before read pw";
@@ -260,10 +261,6 @@ let main ipstring =
     lwt () = Lwt_log.info "before protocol read_Frame in client" in
     Protocol.read_frame ic >>= f >>= fun fr ->
     handle_connection ()
-    (* Lwt.async handle_connection; *)
-    (* repl () *)
-  (*Lwt_log.info "completed both loops?"*)
-  (* f >> repl () *)
   with
   | Failure _ ->
     return (ANSITerminal.(print_string [red]
