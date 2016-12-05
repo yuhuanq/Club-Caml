@@ -13,15 +13,15 @@ STOMP and IRC inspired Instant Messaging Client and Server Application.
 
 `make server` to compile the server
 
-### Required opam packages
+### Required OCaml packages
 
 ```
-lwt v2.5.2
-lablgtk v2.18.5
-camlp4 v4.03+1
-cohttp v0.21.0
-xml-light v2.4
-notty v0.1.1
+lwt.2.5.2
+lablgtk.2.18.5
+camlp4.4.03+1
+cohttp.0.21.0
+xml-light.2.4
+notty.0.1.1
 ```
 
 ## Overview
@@ -36,13 +36,5 @@ chatbot.
 
 Invoke `#help` to see a list of directives.
 
-##Fun Things to try
-
-####Chatbot room
-
-Join the chatbot room to talk with
-a chat bot!
-
-####Easter eggs
-Try sending "😶" for something interesting! ;)
+Try sending ":no_mouth:" for something interesting!
 
