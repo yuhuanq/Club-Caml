@@ -193,6 +193,15 @@ let send_all (conns : CSET.t) frame =
   Lwt_list.iter_p (fun conn -> Protocol.send_frame frame conn.output)
   (CSET.elements conns)
 
+let current_time ()=
+  let open Unix in
+  let unixtime=Unix.localtime (Unix.gettimeofday ()) in
+  let hr=string_of_int unixtime.tm_hour in
+  let min=string_of_int unixtime.tm_min in
+  let sec=string_of_int unixtime.tm_sec in
+  hr^min^sec
+
+
 (* temp: initiate chatbot once on server_start: so now every single msg to it
  * will be continuous *)
 let () = Chatbot.init ()
@@ -201,11 +210,11 @@ let handle_chatbot frame conn =
   (* Chatbot.init (); *)
   let topic = Protocol.get_header frame "destination"  in
   let botre = Chatbot.ask frame.body in
-  let echoMsg = Protocol.make_message topic (string_of_float (Unix.gettimeofday
-  ())) conn.username frame.body in
+  let echoMsg = Protocol.make_message topic (current_time ())
+    conn.username frame.body in
   Lwt_log.info ("Bot response is: " ^ botre) >>
   let reply = Protocol.make_message topic
-  (string_of_float (Unix.gettimeofday ())) "Artificial Conversational Entity" botre in
+  (current_time ()) "Artificial Conversational Entity" botre in
   Lwt_log.info "Right before let conns = H.find state.map topic L185" >>
   let conns = H.find state.map topic in
   Lwt_log.info "Right before Lwt_list.iter_p L187" >>
@@ -216,7 +225,7 @@ let handle_send_topic frame conn =
   let topic = Protocol.get_header frame "destination" in
   if topic = "/topic/Chatbot" then handle_chatbot frame conn else
     let msg = frame.body in
-    let mid = string_of_float (Unix.gettimeofday ()) in
+    let mid = current_time () in
     let conns = H.find state.map topic in
     let message_frame = Protocol.make_message topic mid conn.username msg in
     let msg_obj = {id = float_of_string mid; conn = conn; content = msg} in
@@ -235,7 +244,7 @@ let handle_send_topic frame conn =
 let handle_send_private frame conn =
   let dest = Protocol.get_header frame "destination" in
   let msg = frame.body in
-  let mid = string_of_float (Unix.gettimeofday ()) in
+  let mid = current_time () in
   let recip = List.hd (Str.split private_re dest) in
   let recip_conn = H.find state.user_map recip in
   let message_frame = Protocol.make_message dest mid conn.username msg in
@@ -287,8 +296,8 @@ let handle_subscribe frame conn =
     let conns' = CSET.add conn' conns in
     H.replace state.map topic conns';
     Lwt_log.info (conn.username ^ " subscribed to " ^ topic) >>
-    let message = Protocol.make_message topic (string_of_float
-    (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
+    let message = Protocol.make_message topic (current_time ()) "SERVER"
+      (conn.username ^ " has joined the room.") in
     let stats = Protocol.make_stats "room_inhabitants" (room_subs topic) in
     lwt () = Lwt_log.info ("Current connection topic " ^ (option_to_str conn.topic)) in
     send_all conns' message >>
@@ -309,8 +318,8 @@ let handle_subscribe frame conn =
         H.add state.map_msg topic msgs;
         Lwt_log.info ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "
                        subscribed to " ^ topic) >>
-        let message = Protocol.make_message topic (string_of_float
-        (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
+        let message = Protocol.make_message topic (current_time ()) "SERVER"
+          (conn.username ^ " has joined the room.") in
         let stats = Protocol.make_stats "room_inhabitants" (room_subs topic) in
         send_all conns message >>
         send_all conns stats
@@ -340,8 +349,8 @@ let handle_unsubscribe frame conn =
       ignore_result (Lwt_log.info ("unsubscribed " ^ conn.username ^ " from " ^
                                    topic));
       conn.topic <- None;
-      let left_message = Protocol.make_message topic "BROKER" (string_of_float
-        (Unix.gettimeofday ())) (conn.username ^ " has left the room.") in
+      let left_message = Protocol.make_message topic "BROKER" (current_time ())
+        (conn.username ^ " has left the room.") in
       (*
        * let send_fun conn = ignore_result (Protocol.send_frame left_message
        *                                      conn.output) in
