@@ -15,7 +15,9 @@ open Gui_helper
 
 (*[enter_cb entry] takes in an entry widget and sends the cur. text to be
  *processed by Client.*)
-let enter_cb entry () =
+let enter_cb entry () = (*This function should write to the output channel*)
+  let text = entry#text in
+  (* TODO: integrate with client here *)
   let open Lwt in
 (*
  * How the line below works. Call Client.process which takes in the entry#text
@@ -23,6 +25,8 @@ let enter_cb entry () =
  * output using Gui_helper.msg_insert
  *)
   ignore_result (Client.process entry#text);
+
+  print_endline ("[user entry] - "^text^("\n"));
 
   entry#set_text "" (*clear user text entry*)
 
@@ -47,7 +51,7 @@ let main () = Lwt_main.run(
     in
     let license = License.license in
     let version = "Alpha 0.1" in
-    let copyright = "December 4 2016" in
+    let copyright = "2016" in
     let about_popup = GWindow.about_dialog ~authors:authors ~license:license
                         ~version:version ~copyright:copyright
                         ~name:"Club Caml" ()
@@ -63,8 +67,7 @@ let main () = Lwt_main.run(
     let ip_entry = GEdit.entry ~max_length:50
                               ~packing:ip_addr_prompt#vbox#add () in
     let cancel_button = GButton.button ~label:"Cancel"
-                                    ~packing:ip_addr_prompt#action_area#add ()
-    in
+                                    ~packing:ip_addr_prompt#action_area#add () in
     let ok_button = GButton.button ~label:"Connect"
                                   ~packing:ip_addr_prompt#action_area#add () in
     ignore(cancel_button#connect#clicked
@@ -92,7 +95,7 @@ let main () = Lwt_main.run(
   let factory = new GMenu.factory view_menu ~accel_group in
   ignore(factory#add_item "Clear Chat" ~key:_R ~callback:(clear_chat));
 
-  (*Label for current room*)
+ (*Label for current room*)
   vbox#add (room_label#coerce);
 
   (*must create chat_and_info pane first (isntead of below)
@@ -126,6 +129,7 @@ let main () = Lwt_main.run(
                                              ~packing:chat_and_info#add () in
   scrolled_window#set_hpolicy `NEVER;
   scrolled_window#set_vpolicy `AUTOMATIC;
+  scrolled_window#misc#set_size_request ~height:650 ();
 
   let chat_view = GText.view ~wrap_mode:`WORD ~editable:false
                              ~cursor_visible:false
@@ -146,18 +150,17 @@ let main () = Lwt_main.run(
   in
   usr_view_column#set_alignment 0.5;
   ignore(usr_view#append_column usr_view_column);
-  scrolled_usr#misc#set_size_request ~height:620 ();
 
   (*Menu option to hide users in room*)
   let usr_view_hidden = ref false in
-  ignore(factory#add_item "Toggle User Panel" ~key:_U
+  ignore(factory#add_item "Toggle User Panel" ~key:_H
        ~callback:(fun () -> if !usr_view_hidden = false then
                             (usr_view_hidden:=true;scrolled_usr#misc#hide ())
                             else (usr_view_hidden:=false;
                                   scrolled_usr#misc#show ())));
 
 
-  (*------------------------User entry stuff-------------------------------*)
+  (*---------------------------------------------------------*)
   let entry_box = GPack.hbox ~packing:vbox#add () in
 
   (*User text entry widget*)

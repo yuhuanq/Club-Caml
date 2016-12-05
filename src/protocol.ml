@@ -117,7 +117,7 @@ let unpack buf =
 *)
 let have_cl frame =
   match frame.cmd with
-  | SEND | MESSAGE | ERROR -> true
+  | SEND | MESSAGE | ERROR | GAME | GAME_RESP -> true
   | _ -> false
 
 
@@ -211,7 +211,7 @@ let read_frame ic =
          print_endline "Protocol: Finished Reading Headers!";
          let () = print_list lst in
          let read_len = List.assoc "content-length" lst in
-        lwt ()=Lwt_log.info ("content length is "^read_len) in
+         lwt ()=Lwt_log.info ("content length is "^read_len) in
          let read_len = int_of_string read_len in
          let bytebuf = Bytes.create read_len in
          Lwt_io.read_into_exactly ic bytebuf 0 read_len >>= fun () ->
@@ -293,18 +293,21 @@ let make_stats headers =
     headers = headers;
     body    = ""}
 
-let make_game dest opp game_cmd =
+(* challenge can be either true or false *)
+let make_game dest challenge opp game_cmd =
   { cmd = GAME;
     headers = ["destination", dest;
+               "challenge",challenge;
                "opponent",opp;
                "content-length",string_of_int (String.length game_cmd)];
     body = game_cmd }
 
 let make_game_message game_str (p1,p2) instructions =
+  (* TODO: instructions *)
   { cmd = GAME_RESP;
     headers = ["player1", p1;
                "player2", p2;
-               "instructions",instructions;
+               "instructions","None";
                "content-length",string_of_int (String.length game_str)];
     body = game_str }
 

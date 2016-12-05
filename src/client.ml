@@ -109,10 +109,15 @@ let handle_send msg cur_topic : unit Lwt.t =
   lwt () = Lwt_log.info "About to send the sendframe" in
   send_frame sendframe (!cur_connection).output
 
-let handle_game_client_side game_msg cur_topic =
-  let sender = (!cur_connection).username in
-  let gameframe = Protocol.make_game cur_topic game_msg sender in
-  send_frame gameframe (!cur_connection).output
+let handle_play ?(opp=None) challenge cmd cur_topic =
+  (* dest opp game_cmd *)
+  match opp with
+  | None ->
+      let fr = Protocol.make_game cur_topic challenge "" cmd in
+      Protocol.send_frame fr (!cur_connection).output
+  | Some o ->
+      let fr = Protocol.make_game cur_topic challenge o cmd in
+      Protocol.send_frame fr (!cur_connection).output
 
 let print_to_gui display_str=
   Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |>
@@ -144,9 +149,23 @@ let rec_message fr =
   let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
   print_to_gui display_str
 
-let rec_game_message fr =
-  let instructions = Protocol.get_header  fr "instructions" in
-  Lwt_log.info instructions >> Lwt_log.info fr.body
+
+let rec_gmessage fr =
+  (* instructions may = "" *)
+  let instructions = Protocol.get_header fr "instructions" in
+  let players = (Protocol.get_header fr "player1") ^ " vs " ^ (Protocol.get_header fr
+  "player2")  in
+  let display_str = " < " ^ (string_of_float (Unix.gettimeofday ())) ^ " > " ^ players ^ " :\n" ^ fr.body in
+  (*
+   * Notty.I.string (Notty.A.fg Notty.A.cyan) instructions |>
+   * Notty_lwt.output_image_endline >>= fun () ->
+   * Gui_helper.msg_insert "" display_str;
+   *)
+  (* Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |> *)
+  (* Notty_lwt.output_image_endline >>= fun () -> *)
+  Lwt_io.print display_str >>
+  return (Gui_helper.msg_insert "" display_str)
+
 
 (* TODO: handle incoming messages*)
 let rec handle_incoming_frames ()=
@@ -162,7 +181,10 @@ let rec handle_incoming_frames ()=
   | STATS -> Lwt_log.info "received STATS frame" >>
              rec_stats fr
   | GAME_RESP -> Lwt_log.info "received GAME_RESP frame."
+    >> Lwt_log.info ("received GAME_RESP body: " ^ fr.body)
+    >> rec_gmessage fr
   | _ -> Lwt_log.info ("received a frame of type not expected")
+
 
 (* [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
@@ -176,6 +198,9 @@ let rec handle_incoming_frames ()=
 
 let dir_re = Str.regexp "#"
 
+let is_valid_rmname topic =
+  if String.length topic > 50 || String.length topic < 1 then false else true
+
 let rec repl () =
   lwt () = Lwt_log.info "in repl" in
   lwt raw_input = Lwt_io.read_line Lwt_io.stdin in
@@ -184,27 +209,48 @@ let rec repl () =
     let wdlst = Str.split (Str.regexp "[ \t]+") raw_input in
     match wdlst with
     | [dir] ->
+        Lwt_io.print "in dir mc" >>
         if dir = "#quit" then handle_quit ()
         else if dir = "#leave" then handle_leave cur_topic
         else Lwt_io.print "Invalid directive" >> repl ()
-    | [dir;topic] ->
+    | [dir;arg1] ->
         (* TODO: games *)
-        if String.length topic > 50 || String.length topic < 1 then
-          Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
-          >> repl ()
-        else
+          Lwt_io.print "in dir;arg1 match case" >>
           begin
-            if dir = "#join" then handle_join topic >> repl ()
-            else if dir = "#change" then handle_change topic cur_topic >> repl ()
-            else Lwt_io.print "Invalid directive command" >> repl ()
+            if dir = "#join" then
+              if is_valid_rmname arg1 then
+                handle_join arg1 >> repl ()
+              else
+                Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
+                >> repl ()
+            else if dir = "#change" then
+              if is_valid_rmname arg1 then
+                handle_change arg1 cur_topic >> repl ()
+              else
+                Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
+                >> repl ()
+            else if dir = "#play" then
+              (* TODO: resign *)
+              handle_play "false" arg1 cur_topic >> repl ()
+            else
+              Lwt_io.print "Invalid directive command" >> repl ()
           end
+(* let handle_play ?(opp=None) challenge cmd cur_topic = *)
+    | [dir;arg1;arg2] ->
+        begin
+          Lwt_io.print "in dir;arg1;arg2 match case" >>
+          if dir = "#play" && arg1 = "challenge" then
+            handle_play ~opp:(Some arg2) "true" "" cur_topic >> repl ()
+          else
+            Lwt_io.print "Invalid directive command" >> repl ()
+        end
     | _ ->
+        Lwt_io.print "in _ mc" >>
         Lwt_io.print "Invalid directive command" >> repl ()
   else
     Lwt_log.info "Attempting to send message" >>
-    handle_send raw_input cur_topic  >>
-    Lwt_log.info "Sent a frame" >> repl ()
-
+    handle_send raw_input cur_topic >>
+    Lwt_log.info "Sent a frame"
 
 let rec process raw_input =
   let cur_topic = option_to_str ((!cur_connection).topic) in
@@ -212,26 +258,48 @@ let rec process raw_input =
     let wdlst = Str.split (Str.regexp "[ \t]+") raw_input in
     match wdlst with
     | [dir] ->
+        Lwt_io.print "in dir mc" >>
         if dir = "#quit" then handle_quit ()
         else if dir = "#leave" then handle_leave cur_topic
         else Lwt_io.print "Invalid directive"
-    | [dir;topic] ->
+    | [dir;arg1] ->
         (* TODO: games *)
-        if String.length topic > 50 || String.length topic < 1 then
-          Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
-        else
+          Lwt_io.print "in dir;arg1 match case" >>
           begin
-            if dir = "#join" then handle_join topic
-            else if dir = "#change" then handle_change topic cur_topic
-            else Lwt_io.print "Invalid directive command"
+            if dir = "#join" then
+              if is_valid_rmname arg1 then
+                handle_join arg1 >> repl ()
+              else
+                Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
+                >> repl ()
+            else if dir = "#change" then
+              if is_valid_rmname arg1 then
+                handle_change arg1 cur_topic >> repl ()
+              else
+                Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
+                >> repl ()
+            else if dir = "#play" then
+              (* TODO: resign *)
+              handle_play "false" arg1 cur_topic >> repl ()
+            else
+              Lwt_io.print "Invalid directive command" >> repl ()
           end
+(* let handle_play ?(opp=None) challenge cmd cur_topic = *)
+    | [dir;arg1;arg2] ->
+        begin
+          Lwt_io.print "in dir;arg1;arg2 match case" >>
+          if dir = "#play" && arg1 = "challenge" then
+            handle_play ~opp:(Some arg2) "true" "" cur_topic >> repl ()
+          else
+            Lwt_io.print "Invalid directive command" >> repl ()
+        end
     | _ ->
-        Lwt_io.print "Invalid directive command"
+        Lwt_io.print "in _ mc" >>
+        Lwt_io.print "Invalid directive command" >> repl ()
   else
     Lwt_log.info "Attempting to send message" >>
     handle_send raw_input cur_topic >>
     Lwt_log.info "Sent a frame"
-
 
 let handle_connection () =
   let rec loop () =
@@ -244,7 +312,6 @@ let main ipstring =
     let inet_addr : Lwt_unix.inet_addr = Unix.inet_addr_of_string ipstring in
     let addr = Lwt_unix.ADDR_INET (inet_addr,port) in
     let sock = Lwt_unix.socket Lwt_unix.PF_INET Lwt_unix.SOCK_STREAM 0 in
-    (*Do not need to bind, it is implicitly done - google this*)
     lwt () = Lwt_unix.connect sock addr in
     let oc = Lwt_io.of_fd Lwt_io.Output sock in
     let ic = Lwt_io.of_fd Lwt_io.Input sock in
@@ -254,6 +321,7 @@ let main ipstring =
       match x.cmd with
       | CONNECTED->
         Lwt_log.info "recieved CONNECTED frame from server"
+        >> rec_stats x
       | _->
         Lwt_log.info "expected a CONNECTED frame but got something else" in
     start_connection login "" ic oc >>= fun () ->
@@ -268,3 +336,4 @@ let main ipstring =
   | _ -> return (print_endline "Some other error")
 
 let () = Lwt_log.add_rule "*" Lwt_log.Info
+
