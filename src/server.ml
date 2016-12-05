@@ -586,9 +586,10 @@ let establish_connection ic oc client_id =
         (* let reply = make_connected (string_of_int (newi ()) ) in *)
         let reply = {
           cmd = Protocol.CONNECTED;
-          headers = ("session",string_of_int (newi ()))::gather_info ();
+          headers = ["session",string_of_int (newi ())];
           body = "";
         } in
+        let init_stats = Protocol.make_stats (gather_info ()) in
         let username = List.assoc "login" fr.headers in
         if String.length username > 9 || String.length username < 1 then
           let reply = make_error "Invalid Nickname"
@@ -599,18 +600,19 @@ let establish_connection ic oc client_id =
             let reply = make_error "" "Username already taken" in
             Protocol.send_frame reply oc >> Lwt_io.abort ic
           else
+            (* successful, passed above checks *)
             Lwt_log.info ("user " ^ username ^ " has logged in.") >>= fun _ ->
             let conn = {input = ic; topic = None; output = oc; username = username} in
             state.connections <- CSET.add conn state.connections;
             H.add state.user_map conn.username conn;
             try_lwt
-              Protocol.send_frame reply oc >>=
-                fun () ->
-                  Lwt_log.info ("New connection from " ^
-                  client_id) >>= fun _ ->
-                  Lwt.on_failure (handle_connection conn ())
-                  (fun e -> Lwt_log.ign_error (Printexc.to_string e));
-                  return_unit
+              Protocol.send_frame reply oc >>
+              Protocol.send_frame init_stats oc >>= fun () ->
+                Lwt_log.info ("New connection from " ^
+                client_id) >>= fun _ ->
+                Lwt.on_failure (handle_connection conn ())
+                (fun e -> Lwt_log.ign_error (Printexc.to_string e));
+                return_unit
             with
             | _ ->
               close_connection conn
