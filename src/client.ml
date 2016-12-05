@@ -149,6 +149,12 @@ let rec_stats fr =
   in
   if (String.equal type_of_stats "num_in_rooms") then
     helper hdrs
+  else if (String.equal type_of_stats "room_inhabitants") then
+    match hdrs with
+    |[]-> Lwt_log.info "Error! No inhabitant info"
+    |(k,v)::t->
+      let userlist = Str.split (Str.regexp "[,]+") v in
+      return (Gui_helper.set_usr_list userlist)
   else
     Lwt_log.info "to be implemented"
 
