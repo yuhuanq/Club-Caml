@@ -165,8 +165,21 @@ let gather_info () =
   H.fold (fun k v acc -> (k,get_usernames_str v)::acc)
   state.map []
 
+let room_subs topic =
+  let conns = H.find state.map topic in
+  let subs = CSET.fold (fun elt acc ->
+    if String.length acc = 0 then elt.username
+    else elt.username ^ "," ^ acc) conns "" in
+  [topic,subs]
+  (*
+   * with
+   *   Not_found ->
+   *     let err = Protocol.make_error "Invalid room" "No stats for this room." in
+   *)
+
+
 (* [get_room_stats () ] is an assoc list of active topics, num subscribers *)
-let get_room_stats () =
+let room_nums () =
   H.fold (fun k v acc -> (k,string_of_int (List.length (CSET.elements
   v)))::acc) state.map []
 
@@ -252,6 +265,10 @@ let option_to_str s=
   |Some x-> x
   |None -> "None"
 
+(* [send_all topic frame] sends the frame to all connections subscribed to [topic] *)
+let send_all topic frame =
+  failwith "unimplemented"
+
 (*
  * [handle_subscribe] handles a SUBSCRIBE frame. a SUBSCRIBE command is used to
  * register to a listen to a given destination
@@ -272,8 +289,11 @@ let handle_subscribe frame conn =
     Lwt_log.info (conn.username ^ " subscribed to " ^ topic) >>
     let message = Protocol.make_message topic (string_of_float
     (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
-    lwt ()=Lwt_log.info ("Current connection topic "^(option_to_str conn.topic)) in
+    let stats = Protocol.make_stats "room_inhabitants" (room_subs topic) in
+    lwt () = Lwt_log.info ("Current connection topic " ^ (option_to_str conn.topic)) in
     Lwt_list.iter_p (fun conn -> Protocol.send_frame message conn.output)
+    (CSET.elements conns') >>
+    Lwt_list.iter_p (fun conn -> Protocol.send_frame stats conn.output)
     (CSET.elements conns')
   with Not_found ->
     (* if nonexisting topic, create  it and sub conn to it  *)
@@ -293,7 +313,10 @@ let handle_subscribe frame conn =
                        subscribed to " ^ topic) >>
         let message = Protocol.make_message topic (string_of_float
         (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
+        let stats = Protocol.make_stats "room_inhabitants" (room_subs topic) in
         Lwt_list.iter_p (fun conn -> Protocol.send_frame message conn.output)
+        (CSET.elements conns) >>
+        Lwt_list.iter_p (fun conn -> Protocol.send_frame stats conn.output)
         (CSET.elements conns)
       end
 
@@ -330,10 +353,11 @@ let handle_unsubscribe frame conn =
        *)
       Lwt_list.iter_p (fun conn -> Protocol.send_frame left_message conn.output)
       (CSET.elements conns') >>
-      (* Send a INFO frame with info on the curr. active rooms so that client can *)
-      (* choose reconnect to a different room *)
-      let stat_frame = Protocol.make_stats (get_room_stats ()) in
-      Protocol.send_frame stat_frame conn.output >>
+      (* TODO: *)
+      let stat_frame = Protocol.make_stats "room_inhabitants" (room_subs topic) in
+      (* update eveyrones userlist *)
+      Lwt_list.iter_p (fun conn -> Protocol.send_frame stat_frame conn.output)
+      (CSET.elements conns') >>
       if conns' = CSET.empty then
         begin
           H.replace state.map_msg topic MSET.empty;
@@ -522,7 +546,7 @@ let establish_connection ic oc client_id =
           headers = ["session",string_of_int (newi ())];
           body = "";
         } in
-        let init_stats = Protocol.make_stats (get_room_stats ()) in
+        let init_stats = Protocol.make_stats "num_in_rooms" (room_nums ()) in
         let username = List.assoc "login" fr.headers in
         if String.length username > 9 || String.length username < 1 then
           let reply = make_error "Invalid Nickname"
