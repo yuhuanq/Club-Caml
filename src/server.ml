@@ -182,12 +182,16 @@ let handle_chatbot frame conn =
   (* Chatbot.init (); *)
   let topic = Protocol.get_header frame "destination"  in
   let botre = Chatbot.ask frame.body in
+  let echoMsg = Protocol.make_message topic (string_of_float (Unix.gettimeofday
+  ())) conn.username frame.body in
   Lwt_log.info ("Bot response is: " ^ botre) >>
   let reply = Protocol.make_message topic
-  (string_of_float (Unix.gettimeofday ())) conn.username botre in
+  (string_of_float (Unix.gettimeofday ())) "Artificial Conversational Entity" botre in
   Lwt_log.info "Right before let conns = H.find state.map topic L185" >>
   let conns = H.find state.map topic in
   Lwt_log.info "Right before Lwt_list.iter_p L187" >>
+  Lwt_list.iter_p (fun conn -> Protocol.send_frame echoMsg conn.output)
+  (CSET.elements conns) >>
   Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
   (CSET.elements conns)
 
