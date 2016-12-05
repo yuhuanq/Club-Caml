@@ -188,6 +188,11 @@ let newi =
   let r = ref 0 in
   (fun () -> r:=!r + 1; !r)
 
+(* [send_all topic frame] sends the frame to all connections in conns *)
+let send_all (conns : CSET.t) frame =
+  Lwt_list.iter_p (fun conn -> Protocol.send_frame frame conn.output)
+  (CSET.elements conns)
+
 (* temp: initiate chatbot once on server_start: so now every single msg to it
  * will be continuous *)
 let () = Chatbot.init ()
@@ -204,10 +209,8 @@ let handle_chatbot frame conn =
   Lwt_log.info "Right before let conns = H.find state.map topic L185" >>
   let conns = H.find state.map topic in
   Lwt_log.info "Right before Lwt_list.iter_p L187" >>
-  Lwt_list.iter_p (fun conn -> Protocol.send_frame echoMsg conn.output)
-  (CSET.elements conns) >>
-  Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
-  (CSET.elements conns)
+  send_all conns echoMsg >>
+  send_all conns reply
 
 let handle_send_topic frame conn =
   let topic = Protocol.get_header frame "destination" in
@@ -225,8 +228,7 @@ let handle_send_topic frame conn =
      *   ignore_result (Protocol.send_frame message_frame connelt.output) in
      * CSET.iter send_fun conns;
      *)
-    Lwt_list.iter_p (fun conn -> Protocol.send_frame message_frame conn.output)
-    (CSET.elements conns) >>
+    send_all conns message_frame >>
     Lwt_log.info ("sent a MESSAGE frame to destination: " ^ topic) >>
     return_unit
 
@@ -265,9 +267,6 @@ let option_to_str s=
   |Some x-> x
   |None -> "None"
 
-(* [send_all topic frame] sends the frame to all connections subscribed to [topic] *)
-let send_all topic frame =
-  failwith "unimplemented"
 
 (*
  * [handle_subscribe] handles a SUBSCRIBE frame. a SUBSCRIBE command is used to
@@ -291,10 +290,8 @@ let handle_subscribe frame conn =
     (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
     let stats = Protocol.make_stats "room_inhabitants" (room_subs topic) in
     lwt () = Lwt_log.info ("Current connection topic " ^ (option_to_str conn.topic)) in
-    Lwt_list.iter_p (fun conn -> Protocol.send_frame message conn.output)
-    (CSET.elements conns') >>
-    Lwt_list.iter_p (fun conn -> Protocol.send_frame stats conn.output)
-    (CSET.elements conns')
+    send_all conns' message >>
+    send_all conns' stats
   with Not_found ->
     (* if nonexisting topic, create  it and sub conn to it  *)
     (* TODO: transfer this check and the username len check to client *)
@@ -314,10 +311,8 @@ let handle_subscribe frame conn =
         let message = Protocol.make_message topic (string_of_float
         (Unix.gettimeofday ())) "SERVER" (conn.username ^ " has joined the room.") in
         let stats = Protocol.make_stats "room_inhabitants" (room_subs topic) in
-        Lwt_list.iter_p (fun conn -> Protocol.send_frame message conn.output)
-        (CSET.elements conns) >>
-        Lwt_list.iter_p (fun conn -> Protocol.send_frame stats conn.output)
-        (CSET.elements conns)
+        send_all conns message >>
+        send_all conns stats
       end
 
 exception Fail_Unsub
@@ -351,13 +346,11 @@ let handle_unsubscribe frame conn =
        *                                      conn.output) in
        * CSET.iter send_fun conns';
        *)
-      Lwt_list.iter_p (fun conn -> Protocol.send_frame left_message conn.output)
-      (CSET.elements conns') >>
+      send_all conns' left_message >>
       (* TODO: *)
       let stat_frame = Protocol.make_stats "room_inhabitants" (room_subs topic) in
       (* update eveyrones userlist *)
-      Lwt_list.iter_p (fun conn -> Protocol.send_frame stat_frame conn.output)
-      (CSET.elements conns') >>
+      send_all conns' stat_frame >>
       if conns' = CSET.empty then
         begin
           H.replace state.map_msg topic MSET.empty;
@@ -419,8 +412,7 @@ let handle_game frame conn =
       let str_rep = Games.Tictactoe.to_string gstate in
       let reply = Protocol.make_game_message str_rep newg.players Games.Tictactoe.instructions in
       let conns = H.find state.map dest in
-      Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
-      (CSET.elements conns)
+      send_all conns reply
     else if chal="false" then
       let dest = Protocol.get_header frame "destination" in
       let st = H.find state.games conn.username in
@@ -439,8 +431,7 @@ let handle_game frame conn =
             let str_rep' = opp ^ " wins!\n" ^ str_rep in
             let reply = Protocol.make_game_message str_rep' st.players "" in
             let conns = H.find state.map dest in
-            Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
-            (CSET.elements conns)
+            send_all conns reply
           end
         else begin
           let gstate' = Games.Tictactoe.play st.gstate frame.body in
@@ -453,8 +444,7 @@ let handle_game frame conn =
               let str_rep' = "Game over.\n" ^ str_rep in
               let reply = Protocol.make_game_message str_rep' st.players "" in
               let conns = H.find state.map dest in
-              Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
-              (CSET.elements conns)
+              send_all conns reply
             end
           else
             begin
@@ -464,8 +454,7 @@ let handle_game frame conn =
               let str_rep' = (opp ^ " to move.\n") ^ str_rep in
               let reply = Protocol.make_game_message str_rep' st.players "" in
               let conns = H.find state.map dest in
-              Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
-              (CSET.elements conns)
+              send_all conns reply
             end
           end
       else
