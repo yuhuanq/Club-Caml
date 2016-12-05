@@ -89,7 +89,8 @@ val make_message     : string -> string -> string -> string -> frame
 (* [make_error] is a STOMP ERROR frame *)
 val make_error       : string -> string -> frame
 
-val make_stats  : (string * string) list -> frame
+(* STATS frame contain info the active rooms and # of people in each *)
+val make_stats  : string -> (string * string) list -> frame
 
 val make_game        : string -> string -> string -> string -> frame
 

@@ -288,9 +288,9 @@ let make_error message body =
               "content-length",string_of_int (String.length body)];
    body    = body }
 
-let make_stats headers =
+let make_stats typev headers =
   { cmd     = STATS;
-    headers = headers;
+    headers = ("type",typev)::headers;
     body    = ""}
 
 (* challenge can be either true or false *)
