@@ -6,6 +6,8 @@ module type Game = sig
    * E.g. choosing where to place an x in tic-tac-toe, or making a move in chess*)
   type move_spec
 
+  exception Invalid_move
+
   val is_over : t -> bool
 
   val instructions : string

@@ -95,9 +95,33 @@ let main () = Lwt_main.run(
   let factory = new GMenu.factory view_menu ~accel_group in
   ignore(factory#add_item "Clear Chat" ~key:_R ~callback:(clear_chat));
 
+ (*Label for current room*)
+  vbox#add (room_label#coerce);
+
+  (*must create chat_and_info pane first (isntead of below)
+   *because label needs to use it*)
+  let chat_and_info = GPack.paned `HORIZONTAL () in
+
+  (*Menu option to hide label for current room*)
+  let label_hidden = ref false in
+  ignore(factory#add_item "Toggle Room Label" ~key:_L
+       ~callback:
+          (fun () -> if !label_hidden = false then
+                       begin
+                         (label_hidden:=true;room_label#misc#hide ());
+                         chat_and_info#misc#set_size_request ~height:650 ()
+                       end
+                     else
+                       begin
+                         label_hidden:=false;
+                         room_label#misc#show ();
+                         chat_and_info#misc#set_size_request ~height:623 ()
+                       end
+          ));
+
   (*chat box and user info PANED*)
-  let chat_and_info = GPack.paned `HORIZONTAL ~packing: vbox#add () in
-  chat_and_info#misc#set_size_request ~height:650 ();
+  vbox#add (chat_and_info#coerce);
+  chat_and_info#misc#set_size_request ~height:623 ();
   chat_and_info#set_position 810;
 
   (*Chat box widget*)
@@ -120,7 +144,7 @@ let main () = Lwt_main.run(
   let usr_view = GTree.view ~model:user_list_store
                             ~packing:scrolled_usr#add () in
 
-  let usr_view_column = GTree.view_column  ~title:"Users Online"
+  let usr_view_column = GTree.view_column  ~title:"Users in Room"
             ~renderer:(GTree.cell_renderer_text [`XALIGN 0.5],
                        ["text",column]) ()
   in
