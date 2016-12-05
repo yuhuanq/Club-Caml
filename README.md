@@ -1,6 +1,6 @@
 # Club Caml
 
-![](https://github.com/yuhuanq/Club-Caml/master/ex.gif)
+![](Club-Caml/ex.gif)
 
 Chat, Play, Socialize.
 
