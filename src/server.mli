@@ -15,7 +15,7 @@ type connection = {
 }
 
 type game_state = {
-  mutable gstate : Games.t;
+  mutable gstate : Games.Tictactoe.t;
   players : string * string;
   mutable turn : string;
 }

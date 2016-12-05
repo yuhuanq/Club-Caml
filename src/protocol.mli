@@ -91,6 +91,6 @@ val make_error       : string -> string -> frame
 
 val make_stats  : (string * string) list -> frame
 
-val make_game        : string -> string -> string -> frame
+val make_game        : string -> string -> string -> string -> frame
 
 val make_game_message   : string -> string * string -> string -> frame
