@@ -37,3 +37,16 @@ Once in the lobby, one can select different chatrooms to join, including a
 chatbot.
 
 Invoke `#help` to see a list of directives.
+
+#####Please note:
+If you are running the server and client both locally, do not change the
+address and port combination that is default (127.0.0.1 is localhost), and
+default server port is 9000.
+
+##Fun Things to try
+####Chatbot room
+Join the chatbot room to talk with
+a chat bot! This chatbot uses the
+*Pandorabots API* to select its responses.
+####Easter eggs
+Try sending "🐪" or "😶" for something interesting! ;)
