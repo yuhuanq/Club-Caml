@@ -18,7 +18,6 @@ units of data that server has stored in its internal data structure, then
 
 open Lwt
 open Protocol
-open Database
 
 let (>>|) = (>|=)
 
@@ -86,7 +85,7 @@ type state = {
   mutable map : (string,CSET.t) H.t;
   mutable map_msg : (string, MSET.t) H.t;
   mutable games : (string,game_state) H.t;
-  mutable dbase : Sqlite3.db
+  mutable dbase : Database.t
 }
 
 let persist_topics =
@@ -189,6 +188,7 @@ let flush_chat_history msgset topic limit =
     let helper msg =
       Database.insert state.dbase
         (topic ^ " history")
+        "TIME,MSG,USER"
         [(string_of_float msg.id); msg.conn.username; msg.content] in
     MSET.iter helper msgset;
     H.replace state.map_msg topic MSET.empty;
@@ -294,6 +294,7 @@ let handle_subscribe frame conn =
         Database.make_table state.dbase (topic ^ " history")
           "TIME FLOAT,
            MSG VARCHAR (20),
+           USER VARCHAR (20),
            PRIMARY KEY (TIME)
           ";
         Lwt_log.info ("created new topic: " ^ topic ^ "and " ^ conn.username ^ "

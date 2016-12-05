@@ -42,6 +42,7 @@ type state = {
   mutable map : (string,CSET.t) H.t;
   mutable map_msg : (string, MSET.t) H.t;
   mutable games : (string,game_state) H.t;
+  mutable dbase : Database.t
 }
 
 

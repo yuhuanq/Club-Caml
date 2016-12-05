@@ -10,6 +10,8 @@ open Sqlite3
 
 exception DB_exn of string
 
+type t = Sqlite3.db
+
 (* [initialize db_name] opens a database with the given name
  * in serialized threading and shared cache mode. Returns the corresponding
  * database handler. *)
@@ -29,11 +31,11 @@ let make_table db tb_name tb_layout =
   | Sqlite3.Rc.OK -> ()
   | _ -> raise (DB_exn(errmsg db))
 
-(* [insert db tb_name data] inserts into the given table in the given database
+(* [insert db tb_name columns data] inserts into the given table in the given database
  * the given data and returns a return code. Raises exception if
  * table is not inserted properly. *)
-let insert db tb_name data =
-  let statement = "INSERT INTO " ^ tb_name ^ " VALUES(" in
+let insert db tb_name columns data =
+  let statement = "INSERT INTO " ^ tb_name ^ " (" ^ columns ^ ") " ^ "VALUES(" in
   let rec make_insert_stmt stmt lst =
     match lst with
     | [] -> stmt
