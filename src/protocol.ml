@@ -66,8 +66,7 @@ let cmd_of_str = function
   | "STATS"       -> STATS
   | "GAME"        -> GAME
   | "GAME_RESP"   -> GAME_RESP
-  | x             -> print_endline x;
-                     failwith "illegal cmd string"
+  | x             -> failwith "illegal cmd string"
 
 let (>>) (dt : unit Lwt.t) f = dt >>= (fun _ -> f)
 
@@ -153,14 +152,11 @@ let pack frame =
   else ();
   Buffer.add_char buf '\n';
   Buffer.add_string buf frame.body;
-  print_endline ("frame body: " ^ frame.body);
   Buffer.add_string buf "\x00\n";
   buf
 
 let send_frame frame oc =
-  print_endline "sending a frame";
   let buf = pack frame in
-  print_endline (Buffer.contents buf);
   let payload = Buffer.contents buf in
   Lwt_io.write oc payload >>
   Lwt_io.flush oc
@@ -171,7 +167,6 @@ let send_frame frame oc =
  * val read_to_null ic : Lwt_io.input_channel -> unit Lwt.t
 *)
 let rec read_to_null ic =
-  print_endline "looping in [read_to_null ic]";
   let f = function
     | "\x00" -> return ()
     | _ -> read_to_null ic in
@@ -188,46 +183,36 @@ let rec print_list = function
       print_list l
 
 let read_frame ic =
-  lwt ()= Lwt_log.info "starting to read_frame" in
   (* let cmd = Lwt_io.read_line ic in *)
   let rec read_headers acc =
     Lwt_io.read_line ic  >>=
     (fun s ->
        match s with
        (* headers done if empty str *)
-       | "" -> lwt ()= Lwt_log.info "done reading headers" in return acc
+       | "" -> return acc
        | s ->
-         lwt ()= Lwt_log.info ("in reading headers match case: s " ^ s) in
          let sep = Str.regexp ":" in
          match Str.split sep s with
          | []    -> read_headers acc
          | [k;v] -> read_headers ((k,v)::acc)
          | h::t -> read_headers acc) in
   let final = (fun c ->
-    lwt ()= Lwt_log.info ("read cmd " ^ c) in
     read_headers [] >>=
     (fun lst ->
        try
-         print_endline "Protocol: Finished Reading Headers!";
          let () = print_list lst in
          let read_len = List.assoc "content-length" lst in
-         lwt ()=Lwt_log.info ("content length is "^read_len) in
          let read_len = int_of_string read_len in
          let bytebuf = Bytes.create read_len in
          Lwt_io.read_into_exactly ic bytebuf 0 read_len >>= fun () ->
-         print_endline "right before [read_to_null ic in found match case]";
          lwt (_ : string) = Lwt_io.read_line ic in
-         lwt ()= Lwt_log.info "Done reading, just about to returned frame"in
          return {cmd = cmd_of_str c; headers = lst ; body = (Bytes.to_string bytebuf) }
        with Not_found ->
           (*
           * if no content-length header then body is empty
           * and read to the nullbyte
          *)
-         (*let ()=print_list lst in*)
-         lwt ()= Lwt_log.info "right before [read_to_null ic] in Not_found match case" in
          read_to_null ic >>= fun () ->
-         lwt ()= Lwt_log.info "Done reading, just about to returned frame" in
          return {cmd = cmd_of_str c; headers = lst ; body = ""})) in
     Lwt_io.read_line ic >>= final
 
