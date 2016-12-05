@@ -600,7 +600,7 @@ let accept_connection (fd, sckaddr) =
 let create_socket port () =
   let open Lwt_unix in
   let sock = socket PF_INET SOCK_STREAM 0 in
-  bind sock @@ ADDR_INET(listen_address, port);
+  bind sock @@ ADDR_INET(Unix.inet_addr_any, port);
   listen sock backlog;
   sock
 

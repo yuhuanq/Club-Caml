@@ -1,28 +1,12 @@
 open Lwt
+
 open Protocol
 
-(* Address that server listens to *)
-val listen_address : Unix.inet_addr
+type connection
 
-type connection = {
-  input      : Lwt_io.input_channel;
-  output     : Lwt_io.output_channel;
-  (* Can only be subscribed to one topic or i.e. be in one chatroom at a time *)
-  mutable topic      : string option;
-  username   : string
-}
+type game_state
 
-type game_state = {
-  mutable gstate : Games.Tictactoe.t;
-  players : string * string;
-  mutable turn : string;
-}
-
-type message = {
-  id : float; (* The timestamp of the message. Unique identifier for messages with the same destination. *)
-  conn : connection;
-  content : string
-}
+type message
 
 module CSET : Set.S
 module TOPICSET: Set.S
@@ -32,38 +16,36 @@ module QSET : Set.S
 (* Hashtable for mapping DESTINATIONS to SUBSCRIBERS *)
 module H = Hashtbl
 
-type state = {
-  mutable connections : CSET.t;
-  mutable topics : TOPICSET.t;
-  (* mutable queues : QSET.t; *)
-  mutable user_map : (string,connection) H.t;
-  mutable map : (string,CSET.t) H.t;
-  mutable map_msg : (string, MSET.t) H.t;
-  mutable games : (string,game_state) H.t;
-}
+(*
+ * [state] is the current state of the server. Stores information including active
+ * rooms, subscsribers, game information
+ *)
+type state
 
-
-(* TODO: data structures  *)
-(* dictionary/data structure to keep track of Destinations and who's subscribed to which Destination *)
-(* data structure: Some kind of Dictinoary with Keys being strings representing the topics/destinations and the values being either
-a connection record or connection pair/triple (tuple) *)
-
-val handle_connection : CSET.elt -> unit -> 'a Lwt.t
-
-(* [greeting oc] is a message/prompt the server sends to a new connection  *)
-(* val greeting : Lwt_io.output_channel -> unit *)
-
+(* [handle_subscribe fr conn] handles a subscribe frame read from connection [conn] *)
 val handle_subscribe : Protocol.frame -> CSET.elt -> unit Lwt.t
+
+(* [handle_unsubscribe fr conn] handles a unsubscribe frame read from connection [conn] *)
 val handle_unsubscribe : Protocol.frame -> CSET.elt -> unit Lwt.t
+
+(* [handle_send fr conn] handles a send frame read from connection [conn] *)
 val handle_send : Protocol.frame -> CSET.elt -> unit Lwt.t
+
+(* [handle_disconnect fr conn] handles a disconnect frame read from connection [conn] *)
 val handle_disconnect : Protocol.frame -> connection -> unit Lwt.t
+
+(*
+ * [handle_connection conn ()] loops, continuously reading frames from connection
+ * input [conn.input] and handles frames accordingly
+ *)
+val handle_connection : CSET.elt -> unit -> 'a Lwt.t
 
 (*
  * [accept_connection conn] 'accepts' a connection from
  * [conn : descriptor * sockaddr] and creates a channel to the file descriptor,
  * sends a greeting, and calls [handle_connection]
  *
- * Does the initial greeting phase with a new client.
+ * Does the initial greeting phase with a new client as well.
  *)
 val accept_connection : Lwt_unix.file_descr * Lwt_unix.sockaddr -> unit Lwt.t
 
@@ -80,6 +62,6 @@ val create_socket : int -> unit -> Lwt_unix.file_descr
  *)
 val create_server : int -> unit -> unit -> 'a Lwt.t
 
-
 (* initialize the server *)
 val run_server : int -> bool -> 'a
+
