@@ -2,7 +2,8 @@
  * client.ml
  * Copyright (C) 2016
  * sb892 <sb892@cornell.edu> Somrita Banerjee,
- * ew366 <ew366@cornell.edu> Eric Wang
+ * yq56 <yq56@cornell.edu> Yuhuan Qiu,
+ * ew366 <ew366@cornell.edu> Eric Wang,
  * bl458 <bl458@cornell.edu> Byungchan Lim
  *
  * Distributed under terms of the MIT license.
@@ -210,18 +211,11 @@ let current_time ()=
 cleint gets a GAME frame*)
 let rec_gmessage fr =
   (* ALL PRINTS HERE SHOULD BE game colors*)
-  (* instructions may = "" *)
   let instructions = Protocol.get_header fr "instructions" in
+  (* instructions repld, see #help *)
   let players = (Protocol.get_header fr "player1") ^ " vs " ^ (Protocol.get_header fr
   "player2")  in
   let display_str = " < " ^ (current_time ()) ^ " > " ^ players ^ " :\n" ^ fr.body in
-  (*
-   * Notty.I.string (Notty.A.fg Notty.A.cyan) instructions |>
-   * Notty_lwt.output_image_endline >>= fun () ->
-   * Gui_helper.msg_insert "" display_str;
-   *)
-  (* Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |> *)
-  (* Notty_lwt.output_image_endline >>= fun () -> *)
   Lwt_io.print display_str >>
   return (Gui_helper.msg_insert "" display_str)
 
@@ -334,7 +328,6 @@ let rec repl () =
     |_->
       Lwt_io.print "in _ mc" >>
       Lwt_io.print "Invalid directive command" >> repl ()
-
   else
     Lwt_log.info "Attempting to send message" >>
     handle_send raw_input cur_topic >>

@@ -6,40 +6,12 @@
  * Distributed under terms of the MIT license.
 *)
 
-(* Reminder:
-1. Need to finish implementing flushing in server *)
-
-(* To keep track of the stuff I'm doing, I am writing this. Will erase
-once I am done with games and DB. *)
-(* How Game works (Done except step 5)
-1. Command starting with #game is written on repl
-2. Client makes a game frame containing the command's information and
-sends it to server
-3. Server accepts the game frame, updates its internal data structure containing
-data for all games that are currently being played.
-4. Server makes a game_resp frame containing a string representation
-of the updated game state and sends it to client
-5. Client accepts the game_resp frame and prints the game state on the user's
-terminal using the string representation of the game state in game_resp frame.
-*)
-
-(* How Database works:
-2. Client makes a DATA frame containing the command's information and sends it
-to server
-3. Server accepts DATA frame. If DATA frame requests less than the number of
-units of data that server has stored in its internal data structure, then
-*)
-
 open Lwt
 open Protocol
 
 let (>>|) = (>|=)
 
-
-(* let flog = Lwt_main.run (Lwt_log.file "server.log" ()) *)
-
-(* Anonymous bind:
- * syntactic sugar from Lwt.syntax but Merlin doesn't recognize..so manually *)
+(* Anonymous bind: *)
 let (>>) (dt : unit Lwt.t) f = dt >>= (fun () -> f)
 
 type game_state = {
@@ -171,11 +143,6 @@ let room_subs topic =
     if String.length acc = 0 then elt.username
     else elt.username ^ "," ^ acc) conns "" in
   [topic,subs]
-  (*
-   * with
-   *   Not_found ->
-   *     let err = Protocol.make_error "Invalid room" "No stats for this room." in
-   *)
 
 
 (* [get_room_stats () ] is an assoc list of active topics, num subscribers *)
@@ -201,13 +168,10 @@ let current_time ()=
   let sec=string_of_int unixtime.tm_sec in
   hr^min^sec
 
-
 (* temp: initiate chatbot once on server_start: so now every single msg to it
  * will be continuous *)
 let () = Chatbot.init ()
 let handle_chatbot frame conn =
-  (* TODO: continue conversation, rn before every msg, init is called *)
-  (* Chatbot.init (); *)
   let topic = Protocol.get_header frame "destination"  in
   let botre = Chatbot.ask frame.body in
   let echoMsg = Protocol.make_message topic (current_time ())
@@ -232,11 +196,6 @@ let handle_send_topic frame conn =
     let msg_objs = H.find state.map_msg topic in
     let msg_objs' = MSET.add msg_obj msg_objs in
     H.replace state.map_msg topic msg_objs';
-    (*
-     * let send_fun connelt =
-     *   ignore_result (Protocol.send_frame message_frame connelt.output) in
-     * CSET.iter send_fun conns;
-     *)
     send_all conns message_frame >>
     Lwt_log.info ("sent a MESSAGE frame to destination: " ^ topic) >>
     return_unit
@@ -250,16 +209,11 @@ let handle_send_private frame conn =
   let message_frame = Protocol.make_message dest mid conn.username msg in
   Lwt_list.iter_p (fun conn -> Protocol.send_frame message_frame conn.output)
   [conn;recip_conn]
-  (*
-   * Protocol.send_frame message_frame recip_conn.output >>
-   * Lwt_log.info ("sent a private MESSAGE frame to destination: " ^ recip)
-   *)
 
 (*
  * [handle_send] handles a SEND frame. A SEND commands sends a message to a
  * destination in the system.
 *)
-(* val handle_send : frame -> connection -> unit Lwt.t  *)
 let handle_send frame conn =
   try_lwt
     let topic = Protocol.get_header frame "destination" in
@@ -280,7 +234,6 @@ let option_to_str s=
   match s with
   |Some x-> x
   |None -> "None"
-
 
 (*
  * [handle_subscribe] handles a SUBSCRIBE frame. a SUBSCRIBE command is used to
@@ -308,7 +261,6 @@ let handle_subscribe frame conn =
     send_all conns' stats
   with Not_found ->
     (* if nonexisting topic, create  it and sub conn to it  *)
-    (* TODO: transfer this check and the username len check to client *)
     if String.length topic > 50 || String.length topic < 1 then
       let reply = make_error "Invalid room name" "Room names must be between 1
       and 50 characters." in
@@ -355,11 +307,6 @@ let handle_unsubscribe frame conn =
       conn.topic <- None;
       let left_message = Protocol.make_message topic "BROKER" (current_time ())
         (conn.username ^ " has left the room.") in
-      (*
-       * let send_fun conn = ignore_result (Protocol.send_frame left_message
-       *                                      conn.output) in
-       * CSET.iter send_fun conns';
-       *)
       send_all conns' left_message >>
       (* TODO: *)
       let stat_frame = Protocol.make_stats "room_inhabitants" (room_subs topic) in
@@ -530,7 +477,6 @@ let close_connection conn =
       let conns' = CSET.remove conn conns in
       H.replace state.map topic conns';
       return_unit
-    (* TODO: remove from queues as well *)
     | None ->
       return_unit
   end
@@ -636,13 +582,3 @@ let run_server port debug =
   let serve = create_server port () in
   Lwt_main.run @@ serve ()
 
-(* [flush_map_message map_message] flushes chat history stored in map_message to
- * the database if the size of the chat history exceeds the limit. It's incomplete
-*)
-(* let flush_map_message map_message limit =
-   let helper topic msgset =
-   if List.length (MSET.elements msgset) >= limit
-   then (* flush; *) ignore_result (Lwt_log.info ("flushing to disk: " ^ topic))
-   else () in
-   H.iter helper map_message;
-   return () *)
