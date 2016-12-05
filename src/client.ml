@@ -294,6 +294,22 @@ let rec repl () =
     handle_send raw_input cur_topic >>
     Lwt_log.info "Sent a frame"
 
+let help = "
+Directives:
+#quit                           Quit the application
+#join <room>                    Joins <room> (Must be in a lobby)
+#change <room>                  Changes current room to <room> (Must already be in a room)
+#leave                          Leaves the current room (Must already be in a room)
+#pm <nickname>                  Sends a private message to this user
+#play challenge <username>      Starts a tictactoe game with <username>
+#play i,j                       Plays an X | O at row i, column j
+#play resign                    Resign
+#help                           Display this message
+"
+
+let handle_help () =
+  print_to_gui help
+
 let rec process raw_input =
   let cur_topic = option_to_str ((!cur_connection).topic) in
   if Str.string_match dir_re raw_input 0 then
@@ -303,6 +319,7 @@ let rec process raw_input =
         Lwt_io.print "in dir mc" >>
         if dir = "#quit" then handle_quit ()
         else if dir = "#leave" then handle_leave cur_topic
+        else if dir = "#help" then handle_help ()
         else Lwt_io.print "Invalid directive"
     | [dir;arg1] ->
         (* TODO: games *)
