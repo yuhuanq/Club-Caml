@@ -84,17 +84,7 @@ let option_to_str s=
 let handle_leave cur_topic=
   lwt ()=Lwt_log.info ("Current room is "^(option_to_str (!cur_connection).topic)) in
   let unsubframe=make_unsubscribe cur_topic in
-  (*let f=function
-    |x->
-      match x.cmd with
-      |STATS -> Lwt_log.info ("STATS frame recvd")
-        >> Lwt_log.info ("body of frame recvd: "^x.body)
-      (* TODO: print header to user*)
-      |_-> Lwt_log.info "expected STATS frame"
-  in*)
   Protocol.send_frame unsubframe (!cur_connection).output
-  (*>>
-  read_frame (!cur_connection).input >>= f*)
 
 let handle_quit () =
   print_endline "Quitting the application\n";
@@ -104,16 +94,8 @@ let handle_quit () =
 let handle_change nroom cur_topic=
   let unsubframe = make_unsubscribe cur_topic in
   let subframe = make_subscribe nroom in
-  let f = function
-    |x->
-      match x.cmd with
-      |STATS-> Lwt_io.print ("STATS frame recvd")>>
-        Lwt_io.print ("body of frame recvd: "^x.body)
-      (* TODO: print header to user*)
-      |_-> Lwt_io.print "expected STATS frame" in
   (!cur_connection).topic <- Some nroom;
   send_frame unsubframe (!cur_connection).output >>
-  (* read_frame (!cur_connection).input >>= f >> *)
   send_frame subframe (!cur_connection).output
 
 let handle_join nroom=

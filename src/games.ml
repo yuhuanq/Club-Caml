@@ -44,7 +44,6 @@ module Tictactoe : Game = struct
       i.e.
       2,3 or 1,1\n"
 
-
   (* move_spec is a format to specify a move or turn to be made.
    * E.g. choosing where to place an x in tic-tac-toe, or making a move in chess
    *)
@@ -54,8 +53,7 @@ module Tictactoe : Game = struct
 
   (* [new_game] returns an initialized game state that is the starting point for
    * whichever game we’re playing (for now, tic tac toe) *)
-  let new_game () =
-  {
+  let new_game () = {
     ended = false;
     turns = 0;
     grid = Array.make_matrix 3 3 None
@@ -67,16 +65,19 @@ module Tictactoe : Game = struct
     for x = 0 to sz - 1 do
       for y = 0 to sz - 1 do
         if x-1 >= 0 && x + 1 <= sz - 1
-          && state.grid.(x-1).(y) != None && state.grid.(x+1).(y) != None
+          && state.grid.(x-1).(y) = state.grid.(x).(y)
+          && state.grid.(x).(y) = state.grid.(x+1).(y)
+          && state.grid.(x).(y) != None
           then state.ended <- true
         else if y - 1 >= 0 && y + 1 <= sz - 1
-          && state.grid.(x).(y-1) != None && state.grid.(x).(y+1) != None
+          && state.grid.(x).(y-1) = state.grid.(x).(y)
+          && state.grid.(x).(y) = state.grid.(x).(y+1)
+          && state.grid.(x).(y) != None
           then state.ended <- true
         else
           ()
       done;
-    done;
-    ()
+    done
 
   (* [update state move] takes in the current game state and the move that is
    * to be made, and updates game state. Returns unit *)
