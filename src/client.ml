@@ -205,7 +205,10 @@ let rec_message fr =
     let msg = fr.body in
     print_to_gui ~msg_type:`SERVER id_str msg
   else if (String.equal (String.sub dest 0 9) "/private/")
-    then let id_str = " < " ^ mid ^ " > " ^ sender ^ " : " in
+    then
+    let recip = Str.string_after dest 9 in
+    let sender' = if !(cur_connection).username = sender then ("To " ^ recip) else sender in
+    let id_str = " < " ^ mid ^ " > " ^ sender' ^ " : " in
     let msg = fr.body in
     print_to_gui ~msg_type:`PM  id_str msg
   else
@@ -241,7 +244,6 @@ let rec handle_incoming_frames ()=
     >> rec_gmessage fr
   | _ -> Lwt_log.info ("received a frame of type not expected")
 
-
 (* LIST OF DIRECTIVES
    [#change nrooom] changes room to nroom (unsubscribe and subscribe)
    [#leave] leaves room (unsubscribe)
@@ -265,6 +267,7 @@ let is_valid_rmname topic =
 let is_valid_uname topic =
   if String.length topic > 9 || String.length topic < 1 then false else true
 
+(* not aligned in gui correctly because of not monospaced font *)
 let help = "
 Directives:
 #quit                           Quit the application
