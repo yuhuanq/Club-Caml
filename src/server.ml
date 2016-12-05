@@ -10,10 +10,7 @@
 1. Need to finish implementing flushing in server *)
 
 (* How Database works:
-2. Client makes a DATA frame containing the command's information and sends it
-to server
-3. Server accepts DATA frame. If DATA frame requests less than the number of
-units of data that server has stored in its internal data structure, then
+
 *)
 
 open Lwt
@@ -122,7 +119,8 @@ let clean_state () =
   List.iter (fun elt -> H.add state.map elt CSET.empty) persist_topics;
   H.reset state.map_msg;
   List.iter (fun elt -> H.add state.map_msg elt MSET.empty) persist_topics;
-  H.reset state.games
+  H.reset state.games;
+  state.dbase <- Database.initialize "chathistory.db"
 
 (* make server listen on 127.0.0.1:9000 *)
 let listen_address = Unix.inet_addr_loopback (* or Sys.argv.(1) *)
@@ -183,11 +181,11 @@ let handle_chatbot frame conn =
  * (set of messages) to the database if the size of this set exceeds the given
  * limit. Also empties the corresponding data in map_msg.
 *)
-let flush_chat_history msgset topic limit =
+let flush_map_message msgset topic limit =
   if List.length (MSET.elements msgset) >= limit then
     let helper msg =
       Database.insert state.dbase
-        (topic ^ " history")
+        (topic ^ "_history")
         "TIME,MSG,USER"
         [(string_of_float msg.id); msg.conn.username; msg.content] in
     MSET.iter helper msgset;
@@ -216,7 +214,7 @@ let handle_send_topic frame conn =
     Lwt_list.iter_p (fun conn -> Protocol.send_frame message_frame conn.output)
     (CSET.elements conns) >>
     Lwt_log.info ("sent a MESSAGE frame to destination: " ^ topic) >>
-    flush_chat_history msg_objs' topic 10 >>
+    flush_map_message msg_objs' topic 10 >>
     return_unit
 
 let handle_send_private frame conn =
@@ -291,7 +289,7 @@ let handle_subscribe frame conn =
         let msgs = MSET.empty in
         H.add state.map topic conns;
         H.add state.map_msg topic msgs;
-        Database.make_table state.dbase (topic ^ " history")
+        Database.make_table state.dbase (topic ^ "_history")
           "TIME FLOAT,
            MSG VARCHAR (20),
            USER VARCHAR (20),
@@ -345,6 +343,7 @@ let handle_unsubscribe frame conn =
       if conns' = CSET.empty then
         begin
           H.replace state.map_msg topic MSET.empty;
+          Database.delete_table state.dbase (topic ^ "_history");
           begin
             if not (List.mem topic persist_topics) then
               begin state.topics <- TOPICSET.remove topic state.topics;

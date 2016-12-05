@@ -2,5 +2,6 @@
 #require "lwt";;
 #require "lwt.syntax";;
 #require "ANSITerminal";;
+#require "Sqlite3"
 #load "str.cma";;
 open Lwt;;

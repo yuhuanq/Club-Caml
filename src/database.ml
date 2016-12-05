@@ -73,3 +73,13 @@ let delete_table db tb_name =
   match exec db statement with
   | Sqlite3.Rc.OK -> ()
   | _ -> raise (DB_exn(errmsg db))
+
+(* [get_tables db] prints a list of all the tables in the db. For debugging. *)
+let get_tables db =
+  let print r h =
+    Pervasives.print_endline (h.(0) ^ ": " ^ r.(0)) in
+  let execution = Sqlite3.exec_not_null db ~cb:print
+    "SELECT name FROM sqlite_master;" in
+  match execution with
+  | Sqlite3.Rc.OK -> ()
+  | _ -> raise (DB_exn(errmsg db))
