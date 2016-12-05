@@ -9,12 +9,6 @@
  * Distributed under terms of the MIT license.
 *)
 
-(* Reminder:
-   1. need to do code for when client receives a game_resp frame from server.
-   2. client.mli??
-   3. database frame to send to server to request data. In this case, chat
-   history*)
-
 open Unix
 open Lwt
 open Protocol
@@ -157,6 +151,7 @@ let rec_stats fr =
   let hdrs= List.remove_assoc "type" fr.headers in
   let rec helper hdrs=
     match hdrs with
+    (* ALL PRINTS HERE SHOULD BE THE COLOR OF status of rooms and num users*)
     |[]-> let display_str=" To join a room, type in #join [room name]" in
           lwt ()= print_to_gui display_str in
           return ()
@@ -176,12 +171,12 @@ let rec_stats fr =
       let userlist = Str.split (Str.regexp "[,]+") v in
       return (Gui_helper.set_usr_list userlist)
   else
-    Lwt_log.info "to be implemented"
+    Lwt_log.info "type not recognized"
 
 (* [rec_error] deals with printing error to the gui when the client gets an
 ERROR frame*)
 let rec_error fr =
-  (*let short = Protocol.get_header fr "message" in*)
+  (* ALL PRINTS HERE SHOULD BE RED*)
   lwt ()=Lwt_log.info "Trying to print the error" in
   let errorbody=fr.body in
   print_to_gui ("ERROR: "^ " "^errorbody )
@@ -191,8 +186,18 @@ a MESSAGE frame*)
 let rec_message fr =
   let sender = Protocol.get_header fr "sender" in
   let mid = Protocol.get_header fr "message-id" in
-  let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
-  print_to_gui display_str
+  let dest=Protocol.get_header fr "destination" in
+  (* ALL PRINTS HERE SHOULD BE color-coded. One if destination is private,
+  one if sender is Server *)
+  if (String.equal sender "SERVER") then
+    let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
+    print_to_gui display_str
+  else if (String.equal (String.sub dest 0 9) "/private/")
+    then let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
+    print_to_gui display_str
+  else
+    let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
+    print_to_gui display_str
 
 (* [current_time] provides a time stamp in hours,min,sec*)
 let current_time ()=
@@ -205,6 +210,8 @@ let current_time ()=
 (* [rec_gmessage] deals with the activities associated with a game when the
 cleint gets a GAME frame*)
 let rec_gmessage fr =
+  (* ALL PRINTS HERE SHOULD BE game colors*)
+  let instructions = Protocol.get_header fr "instructions" in
   (* instructions repld, see #help *)
   let players = (Protocol.get_header fr "player1") ^ " vs " ^ (Protocol.get_header fr
   "player2")  in
@@ -340,6 +347,7 @@ Directives:
 "
 
 let handle_help () =
+  (* ALL PRINTS HERE SHOULD BE color of help, same as server??*)
   print_to_gui help
 
 (* [process] handles the raw_input from the user and sends the right frames*)
