@@ -165,6 +165,7 @@ let gather_info () =
   H.fold (fun k v acc -> (k,get_usernames_str v)::acc)
   state.map []
 
+(* [get_room_stats () ] is an assoc list of active topics, num subscribers *)
 let get_room_stats () =
   H.fold (fun k v acc -> (k,string_of_int (List.length (CSET.elements
   v)))::acc) state.map []
@@ -459,74 +460,6 @@ let handle_game frame conn =
     Lwt_log.info ex >>
     let fr = Protocol.make_error "game" "Invalid move." in
     Protocol.send_frame fr conn.output
-  (*
-   * try_lwt
-   *   (* just updating one copy of game_staet is OK, changes will be refl in both
-   *    * locs of the val *)
-   *   let dest = Protocol.get_header frame "destination" in
-   *   let st = H.find state.games conn.username in
-   *   if st.turn <> conn.username then
-   *     Lwt_log.info ("st.turn is:" ^ st.turn ^ " BUT conn.username is:" ^
-   *     conn.username) >>
-   *     send_turn_error frame conn
-   *   else
-   *     if String.trim frame.body = "resign" then
-   *       let opp = get_player' conn.username st.players in
-   *       begin
-   *         H.remove state.games conn.username;
-   *         H.remove state.games opp;
-   *         let str_rep = Games.Tictactoe.to_string st.gstate in
-   *         let str_rep' = opp ^ " wins!\n" ^ str_rep in
-   *         let reply = Protocol.make_game_message str_rep' st.players "" in
-   *         let conns = H.find state.map dest in
-   *         Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
-   *         (CSET.elements conns)
-   *       end
-   *     else begin
-   *       let gstate' = Games.Tictactoe.play st.gstate frame.body in
-   *       let opp = get_player' conn.username st.players in
-   *       if Games.Tictactoe.is_over gstate' then
-   *         begin
-   *           H.remove state.games conn.username;
-   *           H.remove state.games opp;
-   *           let str_rep = Games.Tictactoe.to_string gstate' in
-   *           let str_rep' = "Game over.\n" ^ str_rep in
-   *           let reply = Protocol.make_game_message str_rep' st.players "" in
-   *           let conns = H.find state.map dest in
-   *           Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
-   *           (CSET.elements conns)
-   *         end
-   *       else
-   *         begin
-   *           st.gstate <- gstate';
-   *           st.turn <- opp;
-   *           let str_rep = Games.Tictactoe.to_string gstate' in
-   *           let str_rep' = (opp ^ " to move.\n") ^ str_rep in
-   *           let reply = Protocol.make_game_message str_rep' st.players "" in
-   *           let conns = H.find state.map dest in
-   *           Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
-   *           (CSET.elements conns)
-   *         end
-   *       end
-   * with
-   *   | Not_found ->
-   *     (* Means its the first initial prop. create it. *)
-   *     let gstate = Games.Tictactoe.new_game () in
-   *     let dest = Protocol.get_header frame "destination" in
-   *     let opp = Protocol.get_header frame "opponent" in
-   *     let newg = { gstate = gstate; players = (conn.username,opp); turn =
-   *       conn.username} in
-   *     H.add state.games conn.username newg;
-   *     H.add state.games opp newg;
-   *     let str_rep = Games.Tictactoe.to_string gstate in
-   *     let reply = Protocol.make_game_message str_rep newg.players Games.Tictactoe.instructions in
-   *     let conns = H.find state.map dest in
-   *     Lwt_list.iter_p (fun conn -> Protocol.send_frame reply conn.output)
-   *     (CSET.elements conns)
-   *   | Invalid_argument _ ->
-   *     let fr = Protocol.make_error "game" "Invalid game command. Out of bounds perhaps." in
-   *     Protocol.send_frame fr conn.output
-   *)
 
 let handle_frame frame conn =
   Lwt_log.info "in handle frame" >>
@@ -589,7 +522,7 @@ let establish_connection ic oc client_id =
           headers = ["session",string_of_int (newi ())];
           body = "";
         } in
-        let init_stats = Protocol.make_stats (gather_info ()) in
+        let init_stats = Protocol.make_stats (get_room_stats ()) in
         let username = List.assoc "login" fr.headers in
         if String.length username > 9 || String.length username < 1 then
           let reply = make_error "Invalid Nickname"
