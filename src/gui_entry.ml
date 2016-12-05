@@ -47,7 +47,7 @@ let main () = Lwt_main.run(
 
   (****PROMPT USER FOR USERNAME, IP & PORT OF SERVER****)
   let welcome_prompt = GWindow.dialog
-                ~title:"Welcome to Club Caml! Enter #help for more information."
+                ~title:"Welcome to Club Caml!"
                 ~width:640 ~height:240 () in
 
   (*USERNAME STUFF*)
@@ -133,7 +133,7 @@ let main () = Lwt_main.run(
                              else
                                ip_entry#text
                 in
-                let usr_str = user_entry#text in
+                let usr_str = process_usr user_entry#text in
                 let port_str = port_entry#text in
                 if (is_valid_ip_addr ip_str) then
                   if (is_valid_port port_str) then

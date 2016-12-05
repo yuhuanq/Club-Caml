@@ -71,7 +71,7 @@ let caml_pixbuf = GdkPixbuf.from_file_at_size "images/ocaml.png" 125 125
 let clarkson_pixbuf = GdkPixbuf.from_file_at_size "images/clarkson.png" 125 125
 
 let chat_buffer = GText.buffer ~tag_table:tag_table
-                              ~text:"Welcome to Club Caml!\n" ()
+          ~text:"Welcome to Club Caml! Enter #help for more information.\n" ()
 
 (*the vertical scrollbar*)
 let adjustment = GData.adjustment ()
