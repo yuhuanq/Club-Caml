@@ -96,10 +96,6 @@ let handle_leave cur_topic=
 
 (* [handle_quit] sends out a disconnect frame when user wants to quit app*)
 let handle_quit () =
-  Gui_helper.msg_insert ~msg_type:`STATUS
-        ("Disconnected from Server, either due to user command or unable to"
-         ^"connect. Please restart the application if you"
-         ^"wish to connect again!") "";
   Lwt_log.info "Quitting the application" >>
   let disconframe = make_disconnect in
   Protocol.send_frame disconframe (!cur_connection).output

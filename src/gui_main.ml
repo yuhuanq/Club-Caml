@@ -26,7 +26,11 @@ let enter_cb entry () =
  *)
   ignore_result (Client.process entry#text);
 
-  print_endline ("[user entry] - "^text^("\n"));
+  if text = "#quit" then
+    Gui_helper.msg_insert ~msg_type:`ERROR
+          ("Disconnected from Server, either due to user command or unable to"
+           ^" connect. Please restart the application if you"
+           ^"wish to connect again!") "";
 
   entry#set_text "" (*clear user text entry*)
 
@@ -41,6 +45,7 @@ let main wakener () =
 
   let vbox = GPack.vbox ~packing:window#add () in
   (*upon window destroy, send disconnect frame and wake up*)
+
   ignore(window#connect#destroy (ignore(Client.handle_quit ());
                                  Lwt.wakeup wakener));
   (*About Dialog*)
