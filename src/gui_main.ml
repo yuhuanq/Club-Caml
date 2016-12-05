@@ -1,5 +1,5 @@
 (*
- * gui.ml
+ * gui_main.ml
  * Copyright (C) 2016 ew366 <ew366@cornell.edu> Eric Wang
  * Distributed under terms of the MIT license.
  *)
@@ -15,7 +15,7 @@ open Gui_helper
 
 (*[enter_cb entry] takes in an entry widget and sends the cur. text to be
  *processed by Client.*)
-let enter_cb entry () = (*This function should write to the output channel*)
+let enter_cb entry () =
   let text = entry#text in
   (* TODO: integrate with client here *)
   let open Lwt in
@@ -30,33 +30,9 @@ let enter_cb entry () = (*This function should write to the output channel*)
 
   entry#set_text "" (*clear user text entry*)
 
-(*-----------------MAIN LOOP-----------------*)
-let main () = Lwt_main.run(
-  ignore(GtkMain.Main.init ());
-  Lwt_glib.install ();
-  (*
-  (****PROMPT USER FOR USERNAME, IP & PORT OF SERVER*)
-  let welcome_prompt = GWindow.dialog ~title:"Welcome to Club Caml!"
-                                    ~width:500 ~height:500 () in
-  let user_entry = GEdit.entry ~max_length:9
-                               ~packing:welcome_prompt#vbox#add () in
-  let ip_entry = GEdit.entry ~max_length:25
-                             ~packing:welcome_prompt#vbox#add () in
-  let cancel_button = GButton.button ~label:"Cancel"
-                                  ~packing:welcome_prompt#action_area#add () in
-  let ok_button = GButton.button ~label:"Connect"
-                                ~packing:welcome_prompt#action_area#add () in
-  ignore(cancel_button#connect#clicked
-    ~callback:(fun () -> welcome_prompt#misc#hide ()));
-  ignore(ok_button#connect#clicked
-    ~callback:
-     (fun () -> print_endline(ip_entry#text);welcome_prompt#misc#hide ()));
-  welcome_prompt#show ();
-
-  ignore(Client.main ("127.0.0.1")); *)
-
+(*-----------------Launches the main window-----------------*)
+let main wakener () =
   (*-----------------------------------------------*)
-  let waiter,wakener = Lwt.wait () in
   let window = GWindow.window ~width:960 ~height:720 ~resizable:false
                               ~title:"Club Caml" () in
 
@@ -64,8 +40,9 @@ let main () = Lwt_main.run(
   window#set_icon (Some icon);
 
   let vbox = GPack.vbox ~packing:window#add () in
-  ignore(window#connect#destroy (Lwt.wakeup wakener));
-
+  (*upon window destroy, send disconnect frame and wake up*)
+  ignore(window#connect#destroy (ignore(Client.handle_quit ());
+                                 Lwt.wakeup wakener));
   (*About Dialog*)
   let about_dialog () =
     let authors = ["Yuhuan Qiu";"Eric Wang";"Somrita Banerjee";"Byungchan Lim"]
@@ -81,7 +58,6 @@ let main () = Lwt_main.run(
       ~callback:(fun about -> about_popup#misc#hide ()));
     about_popup#show in
 
-  about_dialog ();
   (*IP Address add server dialog window - Event Handler*)
   let ipPrompt () =
     let ip_addr_prompt = GWindow.dialog ~title:"Enter IP Address of server"
@@ -215,8 +191,3 @@ let main () = Lwt_main.run(
   (* Display the windows and enter Gtk+ main loop *)
   window#add_accel_group accel_group;
   window#show ();
-
-  waiter
-  )
-
-let () = main ()
