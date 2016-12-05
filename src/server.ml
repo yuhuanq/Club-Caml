@@ -239,8 +239,12 @@ let handle_send_private frame conn =
   let recip = List.hd (Str.split private_re dest) in
   let recip_conn = H.find state.user_map recip in
   let message_frame = Protocol.make_message dest mid conn.username msg in
-  Protocol.send_frame message_frame recip_conn.output >>
-  Lwt_log.info ("sent a private MESSAGE frame to destination: " ^ recip)
+  Lwt_list.iter_p (fun conn -> Protocol.send_frame message_frame conn.output)
+  [conn;recip_conn]
+  (*
+   * Protocol.send_frame message_frame recip_conn.output >>
+   * Lwt_log.info ("sent a private MESSAGE frame to destination: " ^ recip)
+   *)
 
 (*
  * [handle_send] handles a SEND frame. A SEND commands sends a message to a
@@ -251,8 +255,9 @@ let handle_send frame conn =
   try_lwt
     let topic = Protocol.get_header frame "destination" in
     if Str.string_match topic_re topic 0 then handle_send_topic frame conn
-    else if Str.string_match private_re topic 0 then handle_send_private frame
-    conn
+    else if Str.string_match private_re topic 0 then
+    lwt ()=Lwt_log.info "Did receive a request for a private message" in
+    handle_send_private frame conn
     else failwith "Invalid send destination"
   with
     Not_found ->
@@ -349,7 +354,9 @@ let handle_unsubscribe frame conn =
       send_all conns' left_message >>
       (* TODO: *)
       let stat_frame = Protocol.make_stats "room_inhabitants" (room_subs topic) in
-      (* update eveyrones userlist *)
+      let stat_frame_num = Protocol.make_stats "num_in_rooms" (room_nums ()) in
+      Protocol.send_frame stat_frame_num conn.output >>
+      (* update eveyrone elses userlist *)
       send_all conns' stat_frame >>
       if conns' = CSET.empty then
         begin
