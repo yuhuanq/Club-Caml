@@ -78,7 +78,7 @@ let shorter_room_name s=
   List.nth slist 1
 
 (* [print_to_gui] prints the string [display_str] to gui*)
-let print_to_gui display_str=
+let print_to_gui display_str =
   (* Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |> *)
   (* Notty_lwt.output_image >>= fun () -> *)
   Lwt_io.print display_str >>
@@ -181,11 +181,20 @@ let rec_error fr =
   let errorbody=fr.body in
   print_to_gui ("ERROR: "^ " "^errorbody )
 
+(* [current_time] provides a time stamp in hours,min,sec*)
+let current_time ()=
+  let unixtime=Unix.localtime (Unix.gettimeofday ()) in
+  let hr=string_of_int unixtime.tm_hour in
+  let min=string_of_int unixtime.tm_min in
+  let sec=string_of_int unixtime.tm_sec in
+  hr^":"^min^":"^sec
+
 (* [rec_message] deals with printing the message to the gui when the client gets
 a MESSAGE frame*)
 let rec_message fr =
   let sender = Protocol.get_header fr "sender" in
-  let mid = Protocol.get_header fr "message-id" in
+  (* let mid = Protocol.get_header fr "message-id" in *)
+  let mid = current_time () in
   let dest=Protocol.get_header fr "destination" in
   (* ALL PRINTS HERE SHOULD BE color-coded. One if destination is private,
   one if sender is Server *)
@@ -199,26 +208,16 @@ let rec_message fr =
     let display_str = " < " ^ mid ^ " > " ^ sender ^ " : " ^ fr.body in
     print_to_gui display_str
 
-(* [current_time] provides a time stamp in hours,min,sec*)
-let current_time ()=
-  let unixtime=Unix.localtime (Unix.gettimeofday ()) in
-  let hr=string_of_int unixtime.tm_hour in
-  let min=string_of_int unixtime.tm_min in
-  let sec=string_of_int unixtime.tm_sec in
-  hr^":"^min^":"^sec
-
 (* [rec_gmessage] deals with the activities associated with a game when the
 cleint gets a GAME frame*)
 let rec_gmessage fr =
   (* ALL PRINTS HERE SHOULD BE game colors*)
-  let instructions = Protocol.get_header fr "instructions" in
   (* instructions repld, see #help *)
   let players = (Protocol.get_header fr "player1") ^ " vs " ^ (Protocol.get_header fr
   "player2")  in
   let display_str = " < " ^ (current_time ()) ^ " > " ^ players ^ " :\n" ^ fr.body in
   Lwt_io.print display_str >>
   return (Gui_helper.msg_insert "" display_str)
-
 
 (* [handle_incoming_frames] is a continuously executing function to deal with
 incoming frames *)
