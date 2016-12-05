@@ -178,8 +178,15 @@ let main wakener () =
   let entry = GEdit.entry ~max_length:500 ~packing:entry_box#add () in
   ignore(entry#connect#activate ~callback:(enter_cb entry));
   (*make button width small*)
-  entry#misc#set_size_request ~width:920 ~height:40 () ;
+  entry#misc#set_size_request ~width:880 ~height:40 () ;
 
+  let caml_button = GButton.button ~relief:`NORMAL
+                                   ~packing:entry_box#add () in
+  ignore(caml_button#connect#clicked
+    ~callback: (fun () -> ignore (Client.process "🐪")));
+  (*Add caml image to button*)
+  let _ = GMisc.image ~file:"images/ocaml_tiny.png"
+                              ~packing:caml_button#add () in
 
   (* Send Button *)
   let send_button = GButton.button ~relief:`NORMAL
