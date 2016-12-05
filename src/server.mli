@@ -22,18 +22,6 @@ module H = Hashtbl
  *)
 type state
 
-(* [handle_subscribe fr conn] handles a subscribe frame read from connection [conn] *)
-val handle_subscribe : Protocol.frame -> CSET.elt -> unit Lwt.t
-
-(* [handle_unsubscribe fr conn] handles a unsubscribe frame read from connection [conn] *)
-val handle_unsubscribe : Protocol.frame -> CSET.elt -> unit Lwt.t
-
-(* [handle_send fr conn] handles a send frame read from connection [conn] *)
-val handle_send : Protocol.frame -> CSET.elt -> unit Lwt.t
-
-(* [handle_disconnect fr conn] handles a disconnect frame read from connection [conn] *)
-val handle_disconnect : Protocol.frame -> connection -> unit Lwt.t
-
 (*
  * [handle_connection conn ()] loops, continuously reading frames from connection
  * input [conn.input] and handles frames accordingly
