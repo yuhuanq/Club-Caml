@@ -90,8 +90,9 @@ let shorter_room_name s=
   List.nth slist 1
 
 let print_to_gui display_str=
-  Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |>
-  Notty_lwt.output_image_endline >>= fun () ->
+  (* Notty.I.string (Notty.A.fg Notty.A.cyan) display_str |> *)
+  (* Notty_lwt.output_image >>= fun () -> *)
+  Lwt_io.print display_str >>
   return (Gui_helper.msg_insert "" display_str)
 
 let handle_leave cur_topic=
