@@ -132,7 +132,9 @@ let print_to_gui display_str=
 (* print stats, print error, message to private*)
 let rec_stats fr =
   (* headers of stats frame is an assoc list of Topics x num subscribers *)
-  let hdrs=fr.headers in
+  (*let hdrs=fr.headers in*)
+  let type_of_stats=Protocol.get_header fr "type" in
+  let hdrs= List.remove_assoc "type" fr.headers in
   let rec helper hdrs=
     match hdrs with
     |[]-> let display_str=" To join a room, type in #join [room name]" in
@@ -144,7 +146,11 @@ let rec_stats fr =
       lwt ()= print_to_gui display_str
       in
       helper t
-  in helper hdrs
+  in
+  if (String.equal type_of_stats "num_in_rooms") then
+    helper hdrs
+  else
+    Lwt_log.info "to be implemented"
 
 
 let rec_error fr =
