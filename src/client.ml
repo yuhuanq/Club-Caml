@@ -296,34 +296,44 @@ let rec process raw_input =
               else
                 Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
                 >> repl ()
-            else if dir = "#change" then
-              if is_valid_rmname arg1 then
-                handle_change ("/topic/"^arg1) cur_topic >> repl ()
-              else
-                Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
-                >> repl ()
-            else if dir = "#play" then
-              (* TODO: resign *)
-              handle_play "false" arg1 cur_topic >> repl ()
             else
-              Lwt_io.print "Invalid directive command" >> repl ()
+              begin match !(cur_connection).topic with
+              | None ->
+                print_to_gui "Error: Invalid directive."
+              | Some t ->
+                if dir = "#change" then
+                  if is_valid_rmname arg1 then
+                    handle_change ("/topic/"^arg1) cur_topic >> repl ()
+                  else
+                    Lwt_io.print "Room name is not valid (Must be between 1 and 50 characters).\n"
+                    >> repl ()
+                else if dir = "#play" then
+                  (* TODO: resign *)
+                  handle_play "false" arg1 cur_topic >> repl ()
+                else
+                  Lwt_io.print "Invalid directive command" >> repl () end
           end
 (* let handle_play ?(opp=None) challenge cmd cur_topic = *)
     | [dir;arg1;arg2] ->
-        begin
-          Lwt_io.print "in dir;arg1;arg2 match case" >>
+        begin match !(cur_connection).topic with
+        | None ->
+          print_to_gui "Error: Invalid directive."
+        | Some t ->
           if dir = "#play" && arg1 = "challenge" then
             handle_play ~opp:(Some arg2) "true" "" cur_topic >> repl ()
           else
-            Lwt_io.print "Invalid directive command" >> repl ()
-        end
+            Lwt_io.print "Invalid directive command" >> repl () end
     | _ ->
         Lwt_io.print "in _ mc" >>
         Lwt_io.print "Invalid directive command" >> repl ()
   else
-    Lwt_log.info "Attempting to send message" >>
-    handle_send raw_input cur_topic >>
-    Lwt_log.info "Sent a frame"
+    begin match !(cur_connection).topic with
+    | None ->
+      print_to_gui "Error: You must be in a room to send a message"
+    | Some t ->
+      Lwt_log.info "Attempting to send message" >>
+      handle_send raw_input cur_topic >>
+      Lwt_log.info "Sent a frame" end
 
 let handle_connection () =
   let rec loop () =
