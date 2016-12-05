@@ -52,6 +52,10 @@ let cur_connection = ref emptyconn
 let update_topic top =
   (!cur_connection).topic <- Some top
 
+let remove_topic () =
+  (!cur_connection).topic <- None
+
+
 let rec read_nickname () =
   ANSITerminal.(print_string [cyan]
                   "\nPlease choose a nickname or username.\n");
@@ -84,6 +88,7 @@ let option_to_str s=
 let handle_leave cur_topic=
   lwt ()=Lwt_log.info ("Current room is "^(option_to_str (!cur_connection).topic)) in
   let unsubframe=make_unsubscribe cur_topic in
+  let ()=remove_topic () in
   Protocol.send_frame unsubframe (!cur_connection).output
 
 let handle_quit () =
@@ -141,6 +146,7 @@ let rec_stats fr =
 
 let rec_error fr =
   (*let short = Protocol.get_header fr "message" in*)
+  lwt ()=Lwt_log.info "Trying to print the error" in
   let errorbody=fr.body in
   print_to_gui ("ERROR: "^ " "^errorbody )
 
@@ -322,7 +328,6 @@ let main ipstring =
       match x.cmd with
       | CONNECTED->
         Lwt_log.info "recieved CONNECTED frame from server"
-        >> rec_stats x
       | _->
         Lwt_log.info "expected a CONNECTED frame but got something else" in
     start_connection login "" ic oc >>= fun () ->
