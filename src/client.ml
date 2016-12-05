@@ -291,9 +291,21 @@ let rec repl () =
           else
             Lwt_io.print "Invalid directive command" >> repl ()
         end
-    | _ ->
-        Lwt_io.print "in _ mc" >>
+    | dir::arg1::t ->
+      Lwt_io.print "in 3 arg mc" >>
+      if dir= "#pm" then
+        if (is_valid_uname arg1) then
+          let arg2=String.concat " " t in
+          handle_private_message arg1 arg2>>repl ()
+        else
+          Lwt_io.print "User name is not valid (Must be between 1 and 9 characters).\n"
+          >> repl ()
+      else
         Lwt_io.print "Invalid directive command" >> repl ()
+    |_->
+      Lwt_io.print "in _ mc" >>
+      Lwt_io.print "Invalid directive command" >> repl ()
+
   else
     Lwt_log.info "Attempting to send message" >>
     handle_send raw_input cur_topic >>
@@ -370,9 +382,20 @@ let rec process raw_input =
               >> repl ()
           else
             Lwt_io.print "Invalid directive command" >> repl () end
-    | _ ->
-        Lwt_io.print "in _ mc" >>
+    | dir::arg1::t ->
+      Lwt_io.print "in 3 arg mc" >>
+      if dir= "#pm" then
+        if (is_valid_uname arg1) then
+          let arg2=String.concat " " t in
+          handle_private_message arg1 arg2>>repl ()
+        else
+          Lwt_io.print "User name is not valid (Must be between 1 and 9 characters).\n"
+          >> repl ()
+      else
         Lwt_io.print "Invalid directive command" >> repl ()
+    |_->
+      Lwt_io.print "in _ mc" >>
+      Lwt_io.print "Invalid directive command" >> repl ()
   else
     begin match !(cur_connection).topic with
     | None ->
