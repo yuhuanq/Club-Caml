@@ -35,7 +35,7 @@ let string_list_conv =
   {kind=`STRING;
    proj=(fun x -> match x with
                   |`STRING y -> y
-                  |_ -> failwith "conversion failed! not a string.");
+                  |_ -> failwith "conve rsion failed! not a string.");
    inj=(fun x -> match x with
                  |Some x -> `STRING (Some x)
                  |None -> `STRING (None) )
@@ -83,3 +83,8 @@ let set_usr_list (user_list:string list) =
     user_list_store#set iter column (Some usr)
   in
   List.iter append_usr user_list
+  
+(*[set_room_label room] sets the room label in the gui to [room]*)
+let set_room_label (room:string) =
+  room_label#set_label
+    ("<span weight=\"bold\" size=\"larger\">"^room^"</span>")
