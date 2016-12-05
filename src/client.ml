@@ -219,9 +219,10 @@ let rec_gmessage fr =
   (* instructions repld, see #help *)
   let players = (Protocol.get_header fr "player1") ^ " vs " ^ (Protocol.get_header fr
   "player2")  in
-  let display_str = " < " ^ (current_time ()) ^ " > " ^ players ^ " :\n" ^ fr.body in
-  Lwt_io.print display_str >>
-  return (Gui_helper.msg_insert "" display_str)
+  let id_str = " < " ^ (current_time ()) ^ " > " ^ players ^ " :\n" in
+  let msg = fr.body in
+  Lwt_io.print (id_str^msg) >>
+  return (Gui_helper.msg_insert id_str msg)
 
 (* [handle_incoming_frames] is a continuously executing function to deal with
 incoming frames *)

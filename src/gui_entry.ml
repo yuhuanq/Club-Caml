@@ -46,8 +46,9 @@ let main () = Lwt_main.run(
   let waiter,wakener = Lwt.wait () in
 
   (****PROMPT USER FOR USERNAME, IP & PORT OF SERVER****)
-  let welcome_prompt = GWindow.dialog ~title:"Welcome to Club Caml!"
-                                    ~width:640 ~height:240 () in
+  let welcome_prompt = GWindow.dialog
+                ~title:"Welcome to Club Caml! Enter #help for more information."
+                ~width:640 ~height:240 () in
 
   (*USERNAME STUFF*)
   let user_hbox = GPack.hbox ~packing:welcome_prompt#vbox#add () in
