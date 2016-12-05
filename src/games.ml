@@ -49,10 +49,14 @@ let ended_or_not state =
   for x = 0 to sz - 1 do
     for y = 0 to sz - 1 do
       if x-1 >= 0 && x + 1 <= sz - 1
-        && state.grid.(x-1).(y) != None && state.grid.(x+1).(y) != None
+        && state.grid.(x-1).(y) = state.grid.(x).(y)
+        && state.grid.(x).(y) = state.grid.(x+1).(y)
+        && state.grid.(x).(y) != None
         then state.ended <- true
       else if y - 1 >= 0 && y + 1 <= sz - 1
-        && state.grid.(x).(y-1) != None && state.grid.(x).(y+1) != None
+        && state.grid.(x).(y-1) = state.grid.(x).(y)
+        && state.grid.(x).(y) = state.grid.(x).(y+1)
+        && state.grid.(x).(y) != None
         then state.ended <- true
       else
         ()
@@ -126,4 +130,3 @@ let play state cmd =
     then (update_on_move state (O(x,y)); state)
   else
     (update_on_move state (X(x,y)); state)
-
