@@ -65,10 +65,13 @@ module Tictactoe : Game = struct
 
   (* [ended_or_not state] updates state based on whether game has ended or not. *)
   let ended_or_not state =
+    let tie = ref true in
     let sz = Array.length state.grid in
     for x = 0 to sz - 1 do
       for y = 0 to sz - 1 do
-        if x-1 >= 0 && x + 1 <= sz - 1
+        if state.grid.(x).(y) != None
+          then tie := false
+        else if x-1 >= 0 && x + 1 <= sz - 1
           && state.grid.(x-1).(y) = state.grid.(x).(y)
           && state.grid.(x).(y) = state.grid.(x+1).(y)
           && state.grid.(x).(y) != None
@@ -81,7 +84,9 @@ module Tictactoe : Game = struct
         else
           ()
       done;
-    done
+    done;
+    if !tie = true
+      then state.ended <- true 
 
   (* [update state move] takes in the current game state and the move that is
    * to be made, and updates game state. Returns unit *)
@@ -150,4 +155,3 @@ module Tictactoe : Game = struct
     else
       (update_on_move state (X(x,y)); state)
 end
-
