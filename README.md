@@ -7,11 +7,8 @@ Chat, Play, Socialize.
 STOMP and IRC inspired Instant Messaging Client and Server Application.
 
 ## Compilation
-`make all` to compile both the client and server
 
-`make client` to compile the client
-
-`make server` to compile the server
+`make all`
 
 ### Required OCaml packages
 
@@ -29,10 +26,6 @@ notty.0.1.1
 To start the server, run i.e. `./camlserver --verbose`.
 
 `./camlclient` for the client.
-
-The client will prompt one for a username and address/port combination.
-Once in the lobby, one can select different chatrooms to join, including a
-chatbot.
 
 Invoke `#help` to see a list of directives.
 
