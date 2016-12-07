@@ -31,7 +31,7 @@ let error_tag =
 
 let server_tag =
   let temp = GText.tag ~name:"server_tag" () in
-  temp#set_property (`WEIGHT (`BOLD));
+  temp#set_property (`FONT ("monospace"));
   temp#set_property (blue_gdk);
   temp
 

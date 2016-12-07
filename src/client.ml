@@ -274,7 +274,7 @@ let help = "
 Directives:
 #quit                           Quit the application
 #join <room>                    Joins <room> (Must be in a lobby)
-#change <room>                  Changes current room to <room> (Must already be in a room)
+#change <room>                  Changes current room to <room> (Must be in a room)
 #leave                          Leaves the current room (Must already be in a room)
 #pm <nickname>                  Sends a private message to this user
 #play challenge <username>      Starts a tictactoe game with <username>

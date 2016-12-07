@@ -173,16 +173,14 @@ let current_time ()=
 let () = Chatbot.init ()
 let handle_chatbot frame conn =
   let topic = Protocol.get_header frame "destination"  in
-  let botre = Chatbot.ask frame.body in
+  let conns = H.find state.map topic in
   let echoMsg = Protocol.make_message topic (current_time ())
     conn.username frame.body in
+  Lwt.async (fun () -> send_all conns echoMsg);
+  let botre = Chatbot.ask frame.body in
   Lwt_log.info ("Bot response is: " ^ botre) >>
   let reply = Protocol.make_message topic
   (current_time ()) "Artificial Conversational Entity" botre in
-  Lwt_log.info "Right before let conns = H.find state.map topic L185" >>
-  let conns = H.find state.map topic in
-  Lwt_log.info "Right before Lwt_list.iter_p L187" >>
-  send_all conns echoMsg >>
   send_all conns reply
 
 let handle_send_topic frame conn =
