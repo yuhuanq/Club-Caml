@@ -29,5 +29,5 @@ To start the server, run i.e. `./camlserver --verbose`.
 
 Invoke `#help` to see a list of directives.
 
-Try sending ":no_mouth:" for something interesting!
+Try sending "`😶`" for something interesting!
 
