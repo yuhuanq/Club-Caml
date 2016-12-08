@@ -5,11 +5,11 @@ Play, and Socialize.
 
 ## Basic Usage
 
-To start the server, run i.e. `./camlserver --verbose`.
+- `./camlserver --verbose`. to start the server
 
-`./camlclient` for the client.
+- `./camlclient` to start the client GUI
 
-Invoke `#help` to see a list of directives.  Try sending "`😶`"!
+- `#help` to see a list of directives.
 
 ![]( https://raw.githubusercontent.com/yuhuanq/Club-Caml/master/ex.gif?token=AQYGq4f9ZEAuP60oT3vYrqc4PM1on-6oks5YTxQhwA==)
 
@@ -19,13 +19,14 @@ Invoke `#help` to see a list of directives.  Try sending "`😶`"!
 
 ### Required packages
 
+- `lwt.2.5.2`
+- `lablgtk.2.18.5`
+- `camlp4.4.03+1`
+- `cohttp.0.21.0`
+- `xml-light.2.4`
+- `notty.0.1.1`
 
-```
-lwt.2.5.2
-lablgtk.2.18.5
-camlp4.4.03+1
-cohttp.0.21.0
-xml-light.2.4
-notty.0.1.1
-```
+## Notes
+
+- Try sending "`😶`"!
 
