@@ -5,7 +5,7 @@ Play, and Socialize.
 
 ## Basic Usage
 
-- `./camlserver --verbose`. to start the server
+- `./camlserver --verbose` to start the server
 
 - `./camlclient` to start the client GUI
 
