@@ -14,9 +14,13 @@ Play, and Socialize.
 
 ## Compilation
 
+*From source*
+
 `make all`
 
 ### Required packages
+
+OCaml 4.03+
 
 - `lwt.2.5.2`
 - `lablgtk.2.18.5`
@@ -24,8 +28,4 @@ Play, and Socialize.
 - `cohttp.0.21.0`
 - `xml-light.2.4`
 - `notty.0.1.1`
-
-## Notes
-
-- Try sending "`😶`"!
 
