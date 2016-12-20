@@ -67,8 +67,9 @@ let tag_table =
   init_tag_table#add casted_pm_tag;init_tag_table#add casted_status_tag;
   init_tag_table
 
-let caml_pixbuf = GdkPixbuf.from_file_at_size "images/ocaml.png" 125 125
-let clarkson_pixbuf = GdkPixbuf.from_file_at_size "images/clarkson.png" 125 125
+let caml_pixbuf = GdkPixbuf.from_file_at_size "src/images/ocaml.png" 125 125
+let clarkson_pixbuf = GdkPixbuf.from_file_at_size
+                        "src/images/clarkson.png" 125 125
 
 let chat_buffer = GText.buffer ~tag_table:tag_table
           ~text:"Welcome to Club Caml! Enter #help for more information.\n" ()
