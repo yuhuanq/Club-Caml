@@ -40,29 +40,19 @@ module CSET = Set.Make(struct
     let compare v1 v2 = Pervasives.compare v1.username v2.username
   end)
 
-module MSET = Set.Make(
-struct
+module MSET = Set.Make(struct
   type t = message
   let compare v1 v2 = Pervasives.compare v1.id v2.id
 end)
 
-module USERSET = Set.Make(
-struct
-  type t = string
-  let compare = Pervasives.compare
-end)
+module String_S =
+  Set.Make(struct type t = string let compare = Pervasives.compare end)
 
-module TOPICSET = Set.Make(
-struct
-  type t = string
-  let compare = Pervasives.compare
-end)
+module USERSET = String_S
 
-module QSET = Set.Make(
-struct
-  type t = string
-  let compare = Pervasives.compare
-end)
+module TOPICSET = String_S
+
+module QSET = String_S
 
 module H = Hashtbl
 
@@ -550,7 +540,7 @@ let establish_connection ic oc client_id =
  * [accept_connection conn] 'accepts' a connection from
  * [conn : descriptor * sockaddr] and creates a channel to the file descriptor,
  * sends a greeting, and calls [handle_connection]
-*)
+ *)
 let accept_connection (fd, sckaddr) =
   let open Lwt_unix in
   let client_id =
@@ -585,7 +575,10 @@ let create_server port () =
   let server_socket = create_socket port () in
   let rec serve () =
     let client = Lwt_unix.accept server_socket in
-    client >>= accept_connection >>= serve
+    (* client >>= accept_connection >>= serve *)
+    client >>= fun (fd,sck) ->
+      Lwt.async (fun () -> accept_connection (fd,sck));
+      serve ()
   in serve
 
 (* initialize the server *)
