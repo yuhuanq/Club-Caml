@@ -27,5 +27,4 @@ OCaml 4.03+
 - `camlp4.4.03+1`
 - `cohttp.0.21.0`
 - `xml-light.2.4`
-- `notty.0.1.1`
 
