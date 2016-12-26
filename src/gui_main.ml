@@ -40,7 +40,7 @@ let main wakener () =
   let window = GWindow.window ~width:960 ~height:720 ~resizable:false
                               ~title:"Club Caml" () in
 
-  let icon = GdkPixbuf.from_file "images/icon.png"  in
+  let icon = GdkPixbuf.from_file "src/images/icon.png"  in
   window#set_icon (Some icon);
 
   let vbox = GPack.vbox ~packing:window#add () in
@@ -185,7 +185,7 @@ let main wakener () =
   ignore(caml_button#connect#clicked
     ~callback: (fun () -> ignore (Client.process "🐪")));
   (*Add caml image to button*)
-  let _ = GMisc.image ~file:"images/ocaml_tiny.png"
+  let _ = GMisc.image ~file:"src/images/ocaml_tiny.png"
                               ~packing:caml_button#add () in
 
   (* Send Button *)
@@ -195,7 +195,7 @@ let main wakener () =
     ~callback: (fun () -> (enter_cb entry ())));
 
   (*Add send image to button*)
-  let _ = GMisc.image ~file:"images/send-button_tiny.png"
+  let _ = GMisc.image ~file:"src/images/send-button_tiny.png"
                               ~packing:send_button#add () in
   (*start with focus on text entry box*)
   ignore(entry#misc#grab_focus ());
